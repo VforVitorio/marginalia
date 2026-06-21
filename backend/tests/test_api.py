@@ -1,0 +1,89 @@
+"""API flow: settings, create-from-upload, fetch, page image, edit, export, and the OCR stream."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from pathlib import Path
+
+import pymupdf
+from fastapi.testclient import TestClient
+
+from marginalia.api.deps import get_active_engine
+from marginalia.api.main import app
+from marginalia.ocr.engine import EngineInfo
+
+
+class _FakeEngine:
+    info = EngineInfo(id="fake", display_name="Fake", kind="local", current_model="m")
+
+    def models(self) -> list[str]:
+        return ["m"]
+
+    async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
+        yield "transcribed"
+
+
+def _one_page_pdf() -> bytes:
+    doc = pymupdf.open()
+    doc.new_page()
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+def test_full_api_flow(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)  # isolate data/ and providers.toml under tmp
+    client = TestClient(app)
+
+    assert client.get("/api/settings").json()["strategies"] == ["mirror"]
+    vault = str(tmp_path / "vault")
+    assert client.put("/api/settings", json={"vault_path": vault}).json()["vault_path"] == vault
+
+    created = client.post("/api/jobs", files={"file": ("notes.pdf", _one_page_pdf(), "application/pdf")}).json()
+    job_id = created["job_id"]
+    assert created["pages"] == 1
+
+    job = client.get(f"/api/jobs/{job_id}").json()
+    assert job["pages"][0]["image_url"].endswith(f"/api/jobs/{job_id}/pages/1/image")
+
+    image = client.get(f"/api/jobs/{job_id}/pages/1/image")
+    assert image.status_code == 200
+    assert image.content.startswith(b"\x89PNG")
+
+    client.put(f"/api/jobs/{job_id}/pages/1", json={"markdown": "# Edited"})
+    assert client.get(f"/api/jobs/{job_id}").json()["pages"][0]["markdown"] == "# Edited"
+
+    written = client.post(f"/api/jobs/{job_id}/export", json={"vault_path": vault, "strategies": ["mirror"]}).json()[
+        "written"
+    ]
+    assert written
+    assert Path(written[0]).read_text(encoding="utf-8")
+
+
+def test_unknown_job_is_404(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    client = TestClient(app)
+    assert client.get("/api/jobs/does-not-exist").status_code == 404
+
+
+def test_non_pdf_upload_is_400(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    client = TestClient(app)
+    response = client.post("/api/jobs", files={"file": ("x.pdf", b"not a pdf", "application/pdf")})
+    assert response.status_code == 400
+
+
+def test_ocr_stream_with_fake_engine(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    app.dependency_overrides[get_active_engine] = lambda: _FakeEngine()
+    try:
+        client = TestClient(app)
+        job_id = client.post("/api/jobs", files={"file": ("n.pdf", _one_page_pdf(), "application/pdf")}).json()[
+            "job_id"
+        ]
+        body = client.get(f"/api/jobs/{job_id}/stream").text
+        assert "page_started" in body
+        assert "transcribed" in body
+        assert "job_done" in body
+    finally:
+        app.dependency_overrides.clear()

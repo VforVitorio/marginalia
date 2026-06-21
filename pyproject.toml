@@ -39,6 +39,10 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.ruff.lint.isort]
 known-first-party = ["marginalia"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI uses callables in argument defaults by design.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["backend/tests"]
