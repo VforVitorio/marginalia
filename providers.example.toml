@@ -1,0 +1,32 @@
+# Catálogo de proveedores OCR + secretos.
+# Copia este fichero a providers.toml (gitignored) y rellena lo tuyo.
+# Las elecciones de uso diario (vault, modelo activo, estrategias) se fijan desde la UI,
+# no aquí — esto es solo el punto de partida y donde viven las API keys.
+
+[[providers]]
+id = "ollama"
+display_name = "Ollama (local)"
+kind = "local"
+base_url = "http://localhost:11434/v1"
+default_model = "qwen3-vl:4b"
+
+[[providers]]
+id = "lmstudio"
+display_name = "LM Studio (local)"
+kind = "local"
+base_url = "http://localhost:1234/v1"
+
+[[providers]]
+id = "gemini"
+display_name = "Gemini (cloud, free tier)"
+kind = "cloud"
+base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+api_key = "PON_TU_API_KEY_DE_AI_STUDIO"
+default_model = "gemini-2.0-flash"
+
+[[providers]]
+id = "claude"
+display_name = "Claude (cloud, suscripción)"
+kind = "cloud"
+# Sin base_url ni api_key: usa claude-agent-sdk autenticado por Claude Code.
+default_model = "claude-sonnet-4-6"

@@ -1,0 +1,31 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+/.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+/dist/
+/build/
+
+# --- Node / frontend ---
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+
+# --- marginalia runtime (never commit user data or secrets) ---
+/data/
+providers.toml
+
+# --- tooling ---
+/.code-review-graph/
+.claude/settings.local.json
+.env
+.env.local
+*.log
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
