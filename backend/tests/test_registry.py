@@ -1,6 +1,7 @@
 """``build_engine`` picks the correct adapter per provider."""
 
 import pytest
+
 from marginalia.config import ProviderConfig
 from marginalia.ocr.agent_sdk import AgentSDKEngine
 from marginalia.ocr.openai_compat import OpenAICompatEngine
