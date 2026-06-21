@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base reset & tokens ───────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* Light mode — warm paper */
+    --color-surface: #fdf8f0;       /* parchment-50 */
+    --color-surface-2: #f9eedb;     /* parchment-100 */
+    --color-border: #f2dbb8;        /* parchment-200 */
+    --color-border-strong: #e8c28d; /* parchment-300 */
+    --color-text: #2a2222;          /* ink-800 */
+    --color-text-2: #52403a;        /* ink-600 */
+    --color-text-3: #8a7060;        /* ink-400 */
+    --color-accent: #b06448;        /* terracotta-500 */
+    --color-accent-light: #d4937a;  /* terracotta-300 */
+    --color-success: #5a8a6a;
+    --color-error: #a04040;
+  }
+
+  .dark {
+    --color-surface: #100f0d;       /* obsidian-900 */
+    --color-surface-2: #1c1917;     /* obsidian-800 */
+    --color-border: #2a2520;
+    --color-border-strong: #3a322c;
+    --color-text: #e8e0d4;
+    --color-text-2: #b0a898;
+    --color-text-3: #7a7068;
+    --color-accent: #c47a60;        /* terracotta-400 */
+    --color-accent-light: #d4937a;  /* terracotta-300 */
+    --color-success: #7aaa8a;
+    --color-error: #c07070;
+  }
+
+  html {
+    font-family: "DM Sans", system-ui, sans-serif;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-3);
+  }
+}
+
+/* ── Utility classes ───────────────────────────────────────── */
+
+@layer utilities {
+  .text-surface { color: var(--color-surface); }
+  .text-primary { color: var(--color-text); }
+  .text-secondary { color: var(--color-text-2); }
+  .text-muted { color: var(--color-text-3); }
+  .text-accent { color: var(--color-accent); }
+  .bg-surface { background-color: var(--color-surface); }
+  .bg-surface-2 { background-color: var(--color-surface-2); }
+  .border-default { border-color: var(--color-border); }
+  .border-strong { border-color: var(--color-border-strong); }
+}
+
+/* ── Component classes ─────────────────────────────────────── */
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none;
+  }
+
+  .btn-primary {
+    @apply btn;
+    background-color: var(--color-accent);
+    color: var(--color-surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.08);
+  }
+  .btn-primary:active {
+    filter: brightness(0.96);
+    transform: translateY(1px);
+  }
+
+  .btn-secondary {
+    @apply btn;
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+  }
+  .btn-secondary:hover {
+    background-color: var(--color-border);
+  }
+  .btn-secondary:active {
+    transform: translateY(1px);
+  }
+
+  .btn-ghost {
+    @apply btn;
+    color: var(--color-text-2);
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .btn-ghost:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+  }
+
+  /* Card / panel */
+  .card {
+    @apply rounded-xl border p-4;
+    background-color: var(--color-surface-2);
+    border-color: var(--color-border);
+  }
+
+  /* Input */
+  .input {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors;
+    background-color: var(--color-surface);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+  .input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 15%, transparent);
+  }
+
+  /* Status dot */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+  .status-dot-ok { background-color: var(--color-success); }
+  .status-dot-err { background-color: var(--color-error); }
+  .status-dot-warn { background-color: #c8943a; }
+
+  /* Shimmer loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-border) 0%,
+      var(--color-surface-2) 50%,
+      var(--color-border) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+}

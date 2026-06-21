@@ -1,0 +1,260 @@
+/**
+ * Export step — vault path confirmation, strategy toggles, one-click export.
+ *
+ * Reads vault_path and strategies from settings (already loaded by App).
+ * Allows overriding vault_path for this export without persisting it.
+ * On success shows the written-files summary.
+ */
+
+import { useState } from "react";
+import { exportJob, type ExportResult, type Settings } from "../api/client";
+import { ErrorBanner } from "../components/ErrorBanner";
+import { Spinner } from "../components/Spinner";
+
+interface ExportProps {
+  jobId: string;
+  jobName: string;
+  settings: Settings | null;
+  onBack: () => void;
+  onDone: () => void;
+}
+
+export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps) {
+  const [vaultPath, setVaultPath] = useState(settings?.vault_path ?? "");
+  const [strategies, setStrategies] = useState<string[]>(
+    settings?.strategies ?? ["mirror"],
+  );
+  const [exporting, setExporting] = useState(false);
+  const [result, setResult] = useState<ExportResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggleStrategy(name: string) {
+    // mirror is always on; other strategies are toggleable.
+    if (name === "mirror") return;
+    setStrategies((prev) =>
+      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name],
+    );
+  }
+
+  async function handleExport() {
+    if (!vaultPath.trim()) {
+      setError("Please enter your Obsidian vault path.");
+      return;
+    }
+    setExporting(true);
+    setError(null);
+    try {
+      const res = await exportJob(jobId, {
+        vault_path: vaultPath.trim(),
+        strategies,
+      });
+      setResult(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // ── Success state ────────────────────────────────────────────────────────
+
+  if (result) {
+    return (
+      <div className="flex flex-col gap-6 w-full max-w-lg mx-auto">
+        <div className="flex flex-col items-center gap-3 text-center py-4">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-green-500/10">
+            <svg className="w-7 h-7 text-green-600 dark:text-green-400" viewBox="0 0 28 28" fill="none">
+              <path
+                d="M5 14l6 6L23 8"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <h2 className="font-serif text-xl font-medium text-primary">Exported!</h2>
+          <p className="text-sm text-secondary">
+            {result.written.length} file{result.written.length !== 1 ? "s" : ""} written to your vault.
+          </p>
+        </div>
+
+        {/* Written files list */}
+        <div className="card flex flex-col gap-1 max-h-64 overflow-y-auto">
+          <p className="text-2xs font-semibold uppercase tracking-widest text-muted pb-1 border-b border-default">
+            Files written
+          </p>
+          <ul className="flex flex-col gap-0.5 mt-1">
+            {result.written.map((path) => (
+              <li key={path} className="text-xs text-primary font-mono truncate" title={path}>
+                {path}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onBack}>
+            Back to Review
+          </button>
+          <button className="btn-primary flex-1" onClick={onDone}>
+            Import another →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Export form ──────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex flex-col gap-6 w-full max-w-lg mx-auto">
+      <div>
+        <h2 className="font-serif text-lg font-medium text-primary">{jobName}</h2>
+        <p className="text-sm text-secondary mt-0.5">
+          Review complete. Configure the export below.
+        </p>
+      </div>
+
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+      {/* Vault path */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-widest text-muted" htmlFor="vault-path">
+          Obsidian vault path
+        </label>
+        <input
+          id="vault-path"
+          className="input font-mono text-sm"
+          type="text"
+          placeholder="/Users/you/Obsidian/My Vault"
+          value={vaultPath}
+          onChange={(e) => setVaultPath(e.target.value)}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        <p className="text-2xs text-muted">
+          The absolute path to your Obsidian vault folder.
+        </p>
+      </div>
+
+      {/* Strategies */}
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+          Export strategies
+        </p>
+
+        <StrategyToggle
+          name="mirror"
+          label="Mirror folder structure"
+          description="Reproduce your Scribe folder hierarchy in the vault."
+          enabled={true}
+          locked={true}
+          onToggle={() => toggleStrategy("mirror")}
+        />
+
+        <StrategyToggle
+          name="wikilinks"
+          label="Generate wikilinks index"
+          description="Create a [[wikilinks]] index note per folder for easy navigation."
+          enabled={strategies.includes("wikilinks")}
+          locked={false}
+          onToggle={() => toggleStrategy("wikilinks")}
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-2">
+        <button className="btn-secondary" onClick={onBack} disabled={exporting}>
+          ← Back
+        </button>
+        <button
+          className="btn-primary flex-1"
+          onClick={handleExport}
+          disabled={exporting || !vaultPath.trim()}
+        >
+          {exporting ? (
+            <>
+              <Spinner size="sm" />
+              Exporting…
+            </>
+          ) : (
+            "Export to Obsidian →"
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface StrategyToggleProps {
+  name: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  locked: boolean;
+  onToggle: () => void;
+}
+
+function StrategyToggle({
+  label,
+  description,
+  enabled,
+  locked,
+  onToggle,
+}: StrategyToggleProps) {
+  return (
+    <div
+      className={[
+        "flex items-start gap-3 rounded-xl border p-3 transition-colors",
+        enabled ? "border-terracotta-400/40 bg-terracotta-300/5" : "border-default",
+        locked ? "opacity-80" : "cursor-pointer hover:border-terracotta-400/30",
+      ].join(" ")}
+      onClick={locked ? undefined : onToggle}
+      role={locked ? undefined : "checkbox"}
+      aria-checked={enabled}
+      tabIndex={locked ? undefined : 0}
+      onKeyDown={
+        locked
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") onToggle();
+            }
+      }
+    >
+      {/* Toggle indicator */}
+      <div
+        className={[
+          "mt-0.5 w-8 h-4.5 rounded-full relative flex-shrink-0 transition-colors",
+          enabled ? "bg-terracotta-500 dark:bg-terracotta-400" : "bg-parchment-300 dark:bg-obsidian-800",
+          locked ? "opacity-70" : "",
+        ].join(" ")}
+        style={{ height: "18px", width: "32px" }}
+      >
+        <span
+          className="absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform"
+          style={{
+            transform: enabled ? "translateX(15px)" : "translateX(2px)",
+            height: "14px",
+            width: "14px",
+          }}
+        />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-primary flex items-center gap-2">
+          {label}
+          {locked && (
+            <span className="text-2xs font-normal text-muted bg-surface-2 px-1.5 py-0.5 rounded">
+              always on
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted mt-0.5">{description}</p>
+      </div>
+    </div>
+  );
+}
