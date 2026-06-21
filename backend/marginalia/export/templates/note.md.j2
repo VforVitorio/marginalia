@@ -1,0 +1,11 @@
+---
+source: {{ source }}
+pages: {{ pages | length }}
+---
+
+{% for page in pages %}
+## Page {{ loop.index }}
+
+{{ page }}
+
+{% endfor %}
