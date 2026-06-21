@@ -1,4 +1,4 @@
-"""``build_engine`` elige el adapter correcto según el proveedor."""
+"""``build_engine`` picks the correct adapter per provider."""
 
 import pytest
 from marginalia.config import ProviderConfig

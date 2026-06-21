@@ -1,4 +1,4 @@
-"""Checks de la fundación: el seam OCREngine se mantiene y la config hace roundtrip."""
+"""Foundation checks: the OCREngine seam holds and config round-trips."""
 
 from collections.abc import AsyncIterator
 
@@ -7,7 +7,7 @@ from marginalia.ocr.engine import EngineInfo, OCREngine
 
 
 class _FakeEngine:
-    """Engine mínimo que debe cumplir el Protocol estructuralmente."""
+    """Minimal engine that must satisfy the Protocol structurally."""
 
     info = EngineInfo(id="fake", display_name="Fake", kind="local", current_model="m")
 
@@ -15,7 +15,7 @@ class _FakeEngine:
         return ["m"]
 
     async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
-        yield "hola"
+        yield "hello"
 
 
 def test_fake_engine_satisfies_protocol() -> None:

@@ -1,8 +1,8 @@
-"""Construye el engine OCR activo desde la config y lista los proveedores disponibles.
+"""Build the active OCR engine from config and list the available providers.
 
-Es el único sitio que sabe qué clase de engine corresponde a cada proveedor: Claude usa el Agent SDK;
-el resto (Ollama, LM Studio, Gemini) comparten ``OpenAICompatEngine``. Añadir un backend nuevo = un caso
-más aquí, sin tocar el orquestador ni la UI.
+This is the only place that knows which engine class maps to each provider: Claude uses the Agent SDK;
+everyone else (Ollama, LM Studio, Gemini) shares ``OpenAICompatEngine``. Adding a new backend = one more
+case here, without touching the orchestrator or the UI.
 """
 
 from __future__ import annotations
@@ -14,17 +14,17 @@ from marginalia.ocr.openai_compat import OpenAICompatEngine
 
 
 def build_engine(provider: ProviderConfig, model: str | None = None) -> OCREngine:
-    """Crea el engine para un proveedor del catálogo.
+    """Create the engine for a catalogue provider.
 
-    Claude (``id == "claude"``) usa el Agent SDK (suscripción); el resto, el adapter OpenAI-compat.
+    Claude (``id == "claude"``) uses the Agent SDK (subscription); everyone else, the OpenAI-compat adapter.
     """
     chosen_model = model or provider.default_model
     if provider.id == "claude":
         return AgentSDKEngine(model=chosen_model or "claude-sonnet-4-6", display_name=provider.display_name)
     if not provider.base_url:
-        raise ValueError(f"El proveedor '{provider.id}' necesita base_url (no es Claude).")
+        raise ValueError(f"Provider '{provider.id}' needs a base_url (it is not Claude).")
     if not chosen_model:
-        raise ValueError(f"El proveedor '{provider.id}' necesita un modelo (ninguno configurado).")
+        raise ValueError(f"Provider '{provider.id}' needs a model (none configured).")
     kind: EngineKind = "cloud" if provider.kind == "cloud" else "local"
     return OpenAICompatEngine(
         id=provider.id,
@@ -40,11 +40,11 @@ def active_engine(
     settings: Settings | None = None,
     providers: list[ProviderConfig] | None = None,
 ) -> OCREngine:
-    """Resuelve el engine activo desde ``settings.json`` + ``providers.toml``."""
+    """Resolve the active engine from ``settings.json`` + ``providers.toml``."""
     settings = settings or load_settings()
     providers = providers if providers is not None else load_providers()
     if not providers:
-        raise ValueError("No hay proveedores configurados (¿falta providers.toml?).")
+        raise ValueError("No providers configured (is providers.toml missing?).")
     chosen = _pick_provider(settings.active_provider, providers)
     return build_engine(chosen, settings.active_model)
 
@@ -54,4 +54,4 @@ def _pick_provider(active_id: str | None, providers: list[ProviderConfig]) -> Pr
         for provider in providers:
             if provider.id == active_id:
                 return provider
-    return providers[0]  # ponytail: sin selección del usuario, el primero del catálogo
+    return providers[0]  # ponytail: with no user selection, the first in the catalogue

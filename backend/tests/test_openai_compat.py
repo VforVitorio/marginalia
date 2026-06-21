@@ -1,11 +1,11 @@
-"""``parse_sse_delta`` extrae el texto de las líneas SSE de chat completions."""
+"""``parse_sse_delta`` extracts the text from chat-completions SSE lines."""
 
 from marginalia.ocr.openai_compat import parse_sse_delta
 
 
 def test_parses_content_delta() -> None:
-    line = 'data: {"choices":[{"delta":{"content":"Hola"}}]}'
-    assert parse_sse_delta(line) == "Hola"
+    line = 'data: {"choices":[{"delta":{"content":"Hello"}}]}'
+    assert parse_sse_delta(line) == "Hello"
 
 
 def test_ignores_done_and_keepalive() -> None:

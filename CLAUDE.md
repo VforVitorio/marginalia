@@ -1,123 +1,124 @@
 # marginalia — Claude Code Context
 
-Fuente de verdad para trabajar en este repo. Supera cualquier convención más vieja en commits o docs.
-Sigue las reglas globales:
-- [[clean-code]] (`~/.claude/CLEAN_CODE.md`) — estilo de código.
-- [[project-bootstrap]] (`~/.claude/PROJECT_BOOTSTRAP.md`) — GitHub, CI, stack de seguridad.
-- [[token-savers]] (`~/.claude/TOKEN_SAVERS.md`) — RTK y herramientas de ahorro de tokens.
+Source of truth for working in this repo. It supersedes any older convention found in commits or docs.
+Follow the global rules:
+- [[clean-code]] (`~/.claude/CLEAN_CODE.md`) — coding style.
+- [[project-bootstrap]] (`~/.claude/PROJECT_BOOTSTRAP.md`) — GitHub, CI, security stack.
+- [[token-savers]] (`~/.claude/TOKEN_SAVERS.md`) — RTK and token-saving tools.
 
-Los deltas de este proyecto van abajo.
+Language: **everything in this repo is English** — code, identifiers, comments, docstrings, docs, UI text, commit messages, PRs. No exceptions.
+
+Project-specific deltas are below.
 
 ---
 
-## 1. Visión
+## 1. Vision
 
-marginalia transforma cuadernos manuscritos del Kindle Scribe (PDF) en notas Markdown en Obsidian.
-Combina ingesta (carpeta sincronizada o drag&drop) + OCR (local Qwen3-VL vía Ollama/LM Studio, o cloud
-Claude/Gemini) + review humana imagen↔markdown + export que respeta la jerarquía de carpetas del origen.
-End-state: una app local todo-en-uno, todo por botones, cero terminal para el uso diario.
+marginalia transforms handwritten Kindle Scribe notebooks (PDF) into Markdown notes in Obsidian.
+It combines ingest (synced folder or drag & drop) + OCR (local Qwen3-VL via Ollama/LM Studio, or cloud
+Claude/Gemini) + a human image↔markdown review + an export that preserves the source folder hierarchy.
+End-state: a local, all-in-one app, everything by buttons, zero terminal for daily use.
 
 ## 2. Tech stack
 
-| Capa | Herramienta |
+| Concern | Tool |
 |---|---|
 | Web framework | FastAPI + Uvicorn |
-| Validación | Pydantic v2 |
-| Gestor de paquetes | uv |
-| Linter/formato | Ruff (line-length 120) |
-| Tipos | mypy (`backend/marginalia`) |
+| Validation | Pydantic v2 |
+| Package manager | uv |
+| Linter/formatter | Ruff (line-length 120) |
+| Types | mypy (`backend/marginalia`) |
 | Tests | pytest + pytest-asyncio |
-| PDF → imagen | PyMuPDF (fitz) |
-| OCR local | Qwen3-VL vía Ollama / LM Studio (API OpenAI-compat) |
-| OCR cloud | Claude (`claude-agent-sdk`, suscripción) · Gemini (endpoint OpenAI-compat, free tier) |
-| Plantillas export | Jinja2 |
+| PDF → image | PyMuPDF (fitz) |
+| Local OCR | Qwen3-VL via Ollama / LM Studio (OpenAI-compatible API) |
+| Cloud OCR | Claude (`claude-agent-sdk`, subscription) · Gemini (OpenAI-compatible endpoint, free tier) |
+| Export templates | Jinja2 |
 | Frontend | Vite + React + TypeScript + Tailwind + GSAP |
-| Streaming | SSE (`StreamingResponse` nativo de FastAPI) |
+| Streaming | SSE (FastAPI native `StreamingResponse`) |
 
-## 3. Estructura
+## 3. Structure
 
 ```
 backend/marginalia/{config,models_admin}.py
 backend/marginalia/{ingest,ocr,jobs,structure,export,api}/
 frontend/src/{steps,components,api,lib}/
-docs/ARCHITECTURE.md   # decisiones + flujo de datos + árbol completo
+docs/ARCHITECTURE.md   # decisions + data flow + full tree
 ```
 
-El árbol completo con la responsabilidad de cada módulo está en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The full tree with each module's responsibility is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## 4. Git workflow
 
-- **Trunk-based**: `main` única rama larga. Ramas `feat/ fix/ docs/` salen de main y PR directo a main. Sin rama dev.
-- **Sin squash**: release-please necesita el historial de commits individual.
-- **Conventional Commits**: imperativo, inglés, **sin** atribución AI (regla global dura — ni `Co-Authored-By` ni "Generated with").
-- **El usuario commitea él mismo**: cuando pida, dale el/los comando(s); nunca auto-commitees.
-- CI verde (`test` / `lint` / `typecheck` / `frontend-build`) antes de cualquier merge. Si CI falla en main, se arregla; nunca `enforce_admins`.
+- **Trunk-based**: `main` is the only long-lived branch. Feature branches (`feat/`, `fix/`, `docs/`) come off main and PR back to main. No dev branch.
+- **No squash**: release-please needs the individual commit history.
+- **Conventional Commits**: imperative, English, and **no AI attribution** (hard rule — no `Co-Authored-By`, no "Generated with").
+- CI must be green (`test` / `lint` / `typecheck` / `frontend-build`) before any merge. If CI fails on main, fix it; never `enforce_admins`.
 
-## 5. Comandos
+## 5. Commands
 
-Backend (desde la raíz):
+Backend (from the repo root):
 ```bash
-uv sync                                              # instala deps
+uv sync                                              # install deps
 uv run uvicorn marginalia.api.main:app --reload      # dev API (:8000)
 uv run pytest -q                                      # tests
-uvx ruff check . && uvx ruff format --check .         # lint + formato
-uv run mypy backend/marginalia                        # tipos
+uvx ruff check . && uvx ruff format --check .         # lint + format
+uv run mypy backend/marginalia                        # types
 ```
 
-Frontend (desde `frontend/`):
+Frontend (from `frontend/`):
 ```bash
 npm ci
 npm run dev          # :5173, proxy /api → :8000
-npm run build        # → frontend/dist (lo sirve FastAPI en prod)
+npm run build        # → frontend/dist (FastAPI serves it in prod)
 npm run lint && npm run typecheck
 ```
 
-## 6. Contrato API ↔ frontend
+## 6. API ↔ frontend contract
 
-- **Dev**: Vite `:5173` con proxy `/api` → FastAPI `:8000`. **Prod/diario**: FastAPI sirve `frontend/dist` + API en `:8000` (un proceso, una URL).
-- **Versionado**: prefijo `/api`. **Errores**: `{ "detail": "..." }` con el status HTTP correcto.
-- **OCR en vivo**: SSE en `GET /api/jobs/{id}/stream`. Eventos: `page_started`, `page_delta`, `page_done`, `job_done`, `error`.
-- **Auth**: ninguna (app local de un usuario). El estado de auth de Claude se expone como **dato** (conectado/no), no como login.
+- **Dev**: Vite `:5173` proxies `/api` → FastAPI `:8000`. **Prod/daily**: FastAPI serves `frontend/dist` + the API on `:8000` (one process, one URL).
+- **Versioning**: `/api` prefix. **Errors**: `{ "detail": "..." }` with the right HTTP status.
+- **Live OCR**: SSE at `GET /api/jobs/{id}/stream`. Events: `page_started`, `page_delta`, `page_done`, `job_done`, `error`.
+- **Auth**: none (single-user local app). Claude's auth state is exposed as **data** (connected / not), not a login.
 
-## 7. Calidad de código
+## 7. Code quality
 
-Aplica [[clean-code]]. Específico del repo:
-- **Routers finos**: nada de lógica de negocio en las rutas — va a los `service.py`.
-- **Límites duros**: los engines OCR no conocen FastAPI/jobs/vault; el `StructureMapper` es función pura; `ingest` no conoce OCR ni vault. No cruzar esos límites.
-- Docstrings de módulo / clase / función pública (regla global). snake_case en backend, camelCase en frontend.
-- Marca simplificaciones deliberadas con un comentario `# ponytail: ...` que nombre el techo y el upgrade path.
+Apply [[clean-code]]. Repo-specific:
+- **Thin routers**: no business logic in routes — it goes to the `service.py` files.
+- **Hard boundaries**: OCR engines know nothing about FastAPI/jobs/vault; the `StructureMapper` is a pure function; `ingest` knows nothing about OCR or the vault. Don't cross those lines.
+- Module / class / public-function docstrings (global rule). snake_case in the backend, camelCase in the frontend. All identifiers and prose in English.
+- Mark deliberate simplifications with a `# ponytail: ...` comment naming the ceiling and the upgrade path.
 
 ## 8. Workflow rules
 
-- **Long-running (OCR, build, `ollama pull`) — nunca te quedes solo esperando**: lanza, haz otra cosa, comprueba y actúa.
-- **Fire-and-check, no bloquear**: sondea una vez → actúa → sigue con otra tarea. En verde, mergea.
+- **Long-running work (OCR, build, `ollama pull`) — never just wait**: fire it, do something else, check and act.
+- **Fire and check, never block**: poll once → act → move on. When green, merge.
 
 ## 9. Tooling notes
 
-- Solo `uv` (sin `pip` directo). `data/` y `providers.toml` están gitignored; `providers.example.toml` **sí** se commitea.
-- Modelos locales: la app habla con Ollama (`:11434`) y LM Studio (`:1234`) por HTTP; **no asume** modelos instalados — los lista del runtime y permite `pull` por botón.
-- Screenshot de UI: `frontend/scripts/shot.mjs` (Playwright) — ver [[FRONTEND_VISUAL_VERIFICATION]].
-- Para tocar `AgentSDKEngine` / auth de suscripción, consulta la skill `claude-api`.
+- uv only (no direct `pip`). `data/` and `providers.toml` are gitignored; `providers.example.toml` **is** committed.
+- Local models: the app talks to Ollama (`:11434`) and LM Studio (`:1234`) over HTTP; it does **not** assume models are installed — it lists them from the runtime and allows `pull` via a button.
+- UI screenshots: `frontend/scripts/shot.mjs` (Playwright) — see [[FRONTEND_VISUAL_VERIFICATION]].
+- To touch `AgentSDKEngine` / subscription auth, consult the `claude-api` skill.
 
-## 10. Skills recomendadas
+## 10. Recommended skills
 
-| Skill | Cuándo |
+| Skill | When |
 |---|---|
-| `frontend-design` + ui-skills.com | cualquier decisión visual (Import/Review/Export) |
-| `refactor-fastapi` | limpieza backend (Pydantic v2, async I/O, DI) |
-| `claude-api` | tocar `AgentSDKEngine` / auth de suscripción |
-| `code-review` → `simplify` | en cada diff |
-| `run` / `verify` | conducir la app y confirmar OCR→review→export |
+| `frontend-design` + ui-skills.com | any visual decision (Import/Review/Export) |
+| `refactor-fastapi` | backend cleanup (Pydantic v2, async I/O, DI) |
+| `claude-api` | touching `AgentSDKEngine` / subscription auth |
+| `code-review` → `simplify` | on every diff |
+| `run` / `verify` | drive the app and confirm OCR→review→export |
 
-## 11. Lecciones aprendidas
+## 11. Lessons learned
 
 <!-- add new entries above this line -->
 
-## 12. Documentos relacionados
+## 12. Related documents
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — decisiones de arquitectura, flujo de datos, árbol completo.
-- [README.md](README.md) — pitch de usuario.
-- [KICKOFF.md](KICKOFF.md) — brief original (referencia histórica).
-- [BACKLOG.md](BACKLOG.md) — ideas fuera del MVP, anotadas y aparcadas.
-- `providers.example.toml` — plantilla de configuración de proveedores.
-- `scripts/setup-github.sh` — aplica branch protection + labels (lo corre el usuario).
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture decisions, data flow, full tree.
+- [README.md](README.md) — user-facing pitch.
+- [KICKOFF.md](KICKOFF.md) — original brief (historical reference).
+- [BACKLOG.md](BACKLOG.md) — out-of-MVP ideas, parked.
+- `providers.example.toml` — provider configuration template.
+- `scripts/setup-github.sh` — applies branch protection + labels.

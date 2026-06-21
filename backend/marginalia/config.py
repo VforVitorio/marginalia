@@ -1,11 +1,11 @@
-"""Carga y unifica la configuración de marginalia.
+"""Load and unify marginalia's configuration.
 
-Dos fuentes, dos propósitos (ver docs/ARCHITECTURE.md §7):
-- ``providers.toml``     : catálogo de proveedores OCR + secretos. Estático; lo edita el dev una vez.
-- ``data/settings.json`` : elecciones de uso diario que fija la UI. Mutables en runtime.
+Two sources, two purposes (see docs/ARCHITECTURE.md §7):
+- ``providers.toml``     : catalogue of OCR providers + secrets. Static; the dev edits it once.
+- ``data/settings.json`` : day-to-day choices the UI writes. Mutable at runtime.
 
-Mantenerlas separadas es lo que permite el principio de producto "el usuario nunca edita config
-para el uso diario": ``providers.toml`` es seed/credenciales, ``settings.json`` lo escribe la app.
+Keeping them separate is what enables the product principle "the user never edits config for daily
+use": ``providers.toml`` is seed/credentials, ``settings.json`` is written by the app.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ PROVIDERS_PATH = Path("providers.toml")
 
 
 class ProviderConfig(BaseModel):
-    """Un backend OCR del catálogo (``providers.toml``)."""
+    """An OCR backend from the catalogue (``providers.toml``)."""
 
     id: str
     display_name: str
@@ -32,7 +32,7 @@ class ProviderConfig(BaseModel):
 
 
 class Settings(BaseModel):
-    """Elecciones vivas del usuario (``data/settings.json``), editables por la UI."""
+    """The user's live choices (``data/settings.json``), editable from the UI."""
 
     vault_path: str | None = None
     scan_folder: str | None = None
@@ -42,7 +42,7 @@ class Settings(BaseModel):
 
 
 def load_providers(path: Path = PROVIDERS_PATH) -> list[ProviderConfig]:
-    """Lee el catálogo de proveedores. Lista vacía si el fichero no existe todavía."""
+    """Read the provider catalogue. Empty list if the file does not exist yet."""
     if not path.exists():
         return []
     raw = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -50,13 +50,13 @@ def load_providers(path: Path = PROVIDERS_PATH) -> list[ProviderConfig]:
 
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
-    """Lee las elecciones del usuario. Defaults si aún no se ha guardado nada."""
+    """Read the user's choices. Defaults if nothing has been saved yet."""
     if not path.exists():
         return Settings()
     return Settings.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def save_settings(settings: Settings, path: Path = SETTINGS_PATH) -> None:
-    """Persiste las elecciones del usuario (la UI llama aquí al cambiar algo)."""
+    """Persist the user's choices (the UI calls this whenever something changes)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(settings.model_dump_json(indent=2), encoding="utf-8")
