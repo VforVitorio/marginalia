@@ -1,1 +1,1 @@
-"""Backends de OCR intercambiables detrás del contrato ``OCREngine``."""
+"""Interchangeable OCR backends behind the ``OCREngine`` contract."""

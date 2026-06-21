@@ -1,13 +1,13 @@
-"""``AgentSDKEngine``: Claude vía ``claude-agent-sdk``, autenticado por la suscripción de Claude Code.
+"""``AgentSDKEngine``: Claude via ``claude-agent-sdk``, authenticated by the Claude Code subscription.
 
-El Agent SDK no documenta paso de imágenes inline en el prompt (confirmado en el README del paquete),
-así que usamos sus primitivas: escribimos la página a un PNG temporal y pedimos al agente que lo lea con
-su herramienta ``Read`` (que renderiza imágenes) y lo transcriba, streameando el texto del asistente.
+The Agent SDK does not document inline image input in the prompt (confirmed in the package README), so
+we use its real primitives: write the page to a temporary PNG and ask the agent to read it with its
+``Read`` tool (which renders images) and transcribe it, streaming the assistant text.
 
 --- WHERE TO CHANGE IF X CHANGES ---
-- Si el Agent SDK añade imágenes inline en el prompt: sustituir el fichero temporal por content blocks.
-- Auth: depende de la sesión de Claude Code (suscripción, sin API key). Si falla, ``ocr/registry.py``
-  deja que Gemini/local cubran el job (ver docs/ARCHITECTURE.md §11, riesgo 1).
+- If the Agent SDK adds inline images in the prompt: replace the temp file with content blocks.
+- Auth: depends on the Claude Code session (subscription, no API key). If it fails, ``ocr/registry.py``
+  lets Gemini/local cover the job (see docs/ARCHITECTURE.md §11, risk 1).
 """
 
 from __future__ import annotations
@@ -22,26 +22,26 @@ from marginalia.ocr.engine import EngineInfo
 
 
 class AgentSDKEngine:
-    """Backend OCR sobre Claude (suscripción, sin API key). Cumple el Protocol ``OCREngine``."""
+    """OCR backend over Claude (subscription, no API key). Satisfies the ``OCREngine`` Protocol."""
 
-    def __init__(self, *, model: str, display_name: str = "Claude (suscripción)") -> None:
+    def __init__(self, *, model: str, display_name: str = "Claude (subscription)") -> None:
         self.info = EngineInfo(id="claude", display_name=display_name, kind="cloud", current_model=model)
         self._model = model
 
     def models(self) -> list[str]:
-        """El Agent SDK no expone catálogo de modelos; devolvemos el configurado."""
+        """The Agent SDK exposes no model catalogue; return the configured one."""
         return [self._model]
 
     async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
-        """Escribe la página a un PNG temporal y deja que el agente lo lea y transcriba."""
+        """Write the page to a temporary PNG and let the agent read and transcribe it."""
         with tempfile.TemporaryDirectory() as tmp:
             image_path = Path(tmp) / "page.png"
             image_path.write_bytes(image_png)
             options = ClaudeAgentOptions(
                 model=self._model,
                 allowed_tools=["Read"],
-                permission_mode="bypassPermissions",  # ponytail: PNG temporal propio, sin prompts de permiso
-                max_turns=3,  # leer la imagen + responder, con holgura
+                permission_mode="bypassPermissions",  # ponytail: our own temp PNG, no permission prompts
+                max_turns=3,  # read the image + answer, with headroom
                 cwd=tmp,
             )
             full_prompt = f"Read the image at {image_path} and {prompt}"

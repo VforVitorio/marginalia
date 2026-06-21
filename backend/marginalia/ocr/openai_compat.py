@@ -1,8 +1,8 @@
-"""``OpenAICompatEngine``: un solo adapter para Ollama, LM Studio y Gemini.
+"""``OpenAICompatEngine``: a single adapter for Ollama, LM Studio and Gemini.
 
-Los tres hablan el API OpenAI-compatible de *chat completions* con visión. La única diferencia es
-``base_url`` + ``api_key`` + ``model`` (ver docs/ARCHITECTURE.md §2). Por eso es una sola clase, sin
-ramas ``if provider == ...``.
+All three speak the OpenAI-compatible *chat completions* API with vision. The only difference is
+``base_url`` + ``api_key`` + ``model`` (see docs/ARCHITECTURE.md §2). That is why this is one class,
+with no ``if provider == ...`` branches.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from marginalia.ocr.engine import EngineInfo, EngineKind
 
 
 class OpenAICompatEngine:
-    """Backend OCR sobre el API OpenAI-compatible. Cumple el Protocol ``OCREngine``."""
+    """OCR backend over the OpenAI-compatible API. Satisfies the ``OCREngine`` Protocol."""
 
     def __init__(
         self,
@@ -37,7 +37,7 @@ class OpenAICompatEngine:
         self._timeout = timeout
 
     def models(self) -> list[str]:
-        """Modelos que el runtime reporta en ``/models``. Lista vacía si no responde."""
+        """Models the runtime reports at ``/models``. Empty list if it doesn't respond."""
         try:
             resp = httpx.get(f"{self._base_url}/models", headers=self._headers(), timeout=10.0)
             resp.raise_for_status()
@@ -47,7 +47,7 @@ class OpenAICompatEngine:
         return [entry["id"] for entry in entries if "id" in entry]
 
     async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
-        """Streamea la transcripción de una página parseando los deltas de chat completions."""
+        """Stream a page's transcription by parsing the chat-completions deltas."""
         payload = self._build_payload(image_png, prompt)
         async with (
             httpx.AsyncClient(timeout=self._timeout) as client,
@@ -85,10 +85,10 @@ class OpenAICompatEngine:
 
 
 def parse_sse_delta(line: str) -> str | None:
-    """Extrae el texto de una línea SSE de *chat completions*. ``None`` si no aporta texto.
+    """Extract the text from a chat-completions SSE line. ``None`` if it carries no text.
 
-    Formato OpenAI: ``data: {"choices":[{"delta":{"content":"..."}}]}``. Las líneas de keep-alive,
-    el centinela ``[DONE]`` y el JSON sin contenido devuelven ``None``.
+    OpenAI shape: ``data: {"choices":[{"delta":{"content":"..."}}]}``. Keep-alive lines, the
+    ``[DONE]`` sentinel and JSON without content all return ``None``.
     """
     if not line.startswith("data:"):
         return None

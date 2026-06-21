@@ -1,7 +1,7 @@
-"""Prompts de OCR de manuscrito. Centralizados para afinarlos en un solo sitio.
+"""Handwriting-OCR prompts. Centralised so they can be tuned in one place.
 
-Si la transcripción sale floja para cierto estilo de letra, este es el archivo a tocar; el resto
-del sistema solo conoce ``handwriting_prompt()``.
+If transcription comes out weak for some handwriting style, this is the file to touch; the rest of the
+system only knows about ``handwriting_prompt()``.
 """
 
 _HANDWRITING_PROMPT = (
@@ -14,5 +14,5 @@ _HANDWRITING_PROMPT = (
 
 
 def handwriting_prompt() -> str:
-    """El prompt por defecto para transcribir una página manuscrita a Markdown."""
+    """The default prompt for transcribing one handwritten page to Markdown."""
     return _HANDWRITING_PROMPT

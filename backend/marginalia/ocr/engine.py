@@ -1,12 +1,12 @@
-"""El contrato ``OCREngine``: el seam que hace los backends de OCR intercambiables.
+"""The ``OCREngine`` contract: the seam that makes OCR backends interchangeable.
 
-Un engine recibe una imagen y un prompt y streamea texto. No conoce jobs, SSE, vault ni FastAPI
-(ver docs/ARCHITECTURE.md §2). Romper esa ignorancia rompe la testabilidad de todo el sistema:
-el orquestador (``jobs/service.py``) es el único que sabe de páginas y persistencia.
+An engine takes one image and a prompt and streams text. It knows nothing about jobs, SSE, the vault,
+or FastAPI (see docs/ARCHITECTURE.md §2). Breaking that ignorance breaks the testability of the whole
+system: the orchestrator (``jobs/service.py``) is the only place that knows about pages and persistence.
 
 --- WHERE TO CHANGE IF X CHANGES ---
-- Nuevo backend OCR: implementa este Protocol y regístralo en ``ocr/registry.py``.
-- Cambia la forma del streaming: aquí y en quien consuma ``transcribe_page`` (``jobs/service.py``).
+- New OCR backend: implement this Protocol and register it in ``ocr/registry.py``.
+- Change the streaming shape: here and in whoever consumes ``transcribe_page`` (``jobs/service.py``).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ EngineKind = Literal["local", "cloud"]
 
 @dataclass(frozen=True)
 class EngineInfo:
-    """Metadatos de un backend OCR, para mostrarlo y seleccionarlo en la UI."""
+    """Metadata for an OCR backend, used to display and select it in the UI."""
 
     id: str
     display_name: str
@@ -30,14 +30,14 @@ class EngineInfo:
 
 @runtime_checkable
 class OCREngine(Protocol):
-    """Backend de OCR intercambiable. Imagen -> texto streameado, nada más."""
+    """Interchangeable OCR backend. Image -> streamed text, nothing else."""
 
     info: EngineInfo
 
     def models(self) -> list[str]:
-        """Modelos disponibles en este backend (lista vacía si no se pueden consultar)."""
+        """Models available on this backend (empty list if they can't be queried)."""
         ...
 
     def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
-        """Streamea la transcripción de una página como trozos de texto."""
+        """Stream the transcription of one page as text chunks."""
         ...
