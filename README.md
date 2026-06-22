@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.svg" alt="marginalia" width="200">
+</p>
+
 # marginalia
 
 Turn the notebooks you write by hand on your Kindle Scribe into Markdown you can actually use in Obsidian.
@@ -50,6 +54,15 @@ Open http://localhost:8000 and import a notebook. (The vault path and almost eve
 3. Pick a backend: local for privacy, cloud for the hard pages. One click.
 4. Review: page by page, fix what the OCR misread. A normal notebook takes a couple of minutes.
 5. Export: choose how it lands in Obsidian (mirror folders, wikilinks), hit export.
+
+## Customizing the OCR system prompt
+
+Transcription quality depends on two things: the **model you pick** and the **instructions it gets**. The OCR runs with a system prompt tuned for Obsidian — LaTeX math (`$…$` inline, `$$…$$` blocks), callouts, checkboxes, tables, headings: the rich Markdown Obsidian actually renders. If you want to steer it (your own conventions, a different structure), it lives in one place:
+
+- `backend/marginalia/ocr/prompts.py` → `system_prompt()` — the full instructions.
+- `backend/marginalia/ocr/prompts.py` → `handwriting_prompt()` — the short per-page instruction.
+
+Edit, restart the backend, done.
 
 ## Status
 
