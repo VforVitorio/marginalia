@@ -49,6 +49,8 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   );
   const [activePage, setActivePage] = useState(0);
   const [jobDone, setJobDone] = useState(false);
+  const [jobErrored, setJobErrored] = useState(false);
+  const [stopped, setStopped] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -107,17 +109,20 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
         setJobDone(true);
       } else if (event.type === "error") {
         setStreamError(event.message);
+        setJobErrored(true);
       }
     },
     [],
   );
 
+  // Setting the stream's jobId to null (on Stop) closes the EventSource, which
+  // disconnects the client and cancels the OCR generator server-side.
   useJobStream(
-    initialLoading ? null : jobId,
+    initialLoading || stopped ? null : jobId,
     handleSseEvent,
     () => {
-      // Stream closed — if not already done, mark done so UI unblocks.
-      setJobDone((prev) => prev || true);
+      // Stream closed (terminal event or network drop) — unblock the UI.
+      setJobDone(true);
     },
   );
 
@@ -182,9 +187,13 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
         <div className="flex-1 min-w-0">
           <h2 className="font-serif text-lg font-medium text-primary truncate">{jobName}</h2>
           <p className="text-xs text-muted mt-0.5">
-            {jobDone
-              ? `${pageCount} page${pageCount !== 1 ? "s" : ""} — OCR complete`
-              : `OCR running… ${doneCount} / ${pageCount} done`}
+            {jobErrored
+              ? "OCR failed — check the provider/model in the top-right."
+              : stopped
+                ? `Stopped — ${doneCount} / ${pageCount} pages transcribed.`
+                : jobDone
+                  ? `${pageCount} page${pageCount !== 1 ? "s" : ""} — OCR complete`
+                  : `OCR running… ${doneCount} / ${pageCount} done`}
           </p>
         </div>
 
@@ -204,15 +213,28 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
           </span>
         </div>
 
+        {!jobDone && !jobErrored && !stopped && (
+          <button className="btn-secondary" onClick={() => setStopped(true)}>
+            ■ Stop
+          </button>
+        )}
         <button className="btn-secondary" onClick={onBack}>
           ← Back
         </button>
         <button
           className="btn-primary"
           onClick={onExport}
-          disabled={!jobDone}
+          disabled={!((jobDone || stopped) && !jobErrored)}
         >
-          {jobDone ? "Export →" : <><Spinner size="sm" /> OCR running…</>}
+          {jobErrored ? (
+            "OCR failed"
+          ) : jobDone || stopped ? (
+            "Export →"
+          ) : (
+            <>
+              <Spinner size="sm" /> OCR running…
+            </>
+          )}
         </button>
       </div>
 
