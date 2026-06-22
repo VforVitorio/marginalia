@@ -1,0 +1,20 @@
+name: OSV-Scanner
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "41 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.0.2"
+    permissions:
+      security-events: write
+      contents: read
+      actions: read

@@ -1,0 +1,19 @@
+"area: api":
+  - changed-files:
+      - any-glob-to-any-file: ["backend/marginalia/api/**"]
+
+"area: backend":
+  - changed-files:
+      - any-glob-to-any-file: ["backend/**", "pyproject.toml", "uv.lock"]
+
+"area: frontend":
+  - changed-files:
+      - any-glob-to-any-file: ["frontend/**"]
+
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md", "docs/**"]
+
+"area: ci-cd":
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "scripts/**"]
