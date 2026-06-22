@@ -1,0 +1,21 @@
+name: auto-update-prs
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autoupdate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://chinthakagodawita/autoupdate-action:v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_FILTER: "labelled"
+          PR_LABELS: "dependencies"
+          EXCLUDED_LABELS: "do-not-rebase"
+          MERGE_MSG: "Auto-update branch with latest main"
