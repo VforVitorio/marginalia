@@ -78,6 +78,21 @@ def test_loose_upload_exports_under_target_dir(tmp_path, monkeypatch) -> None:
     assert any("inbox" in path and path.endswith("memo.md") for path in written)
 
 
+def test_providers_status_reports_state(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "providers.toml").write_text(
+        '[[providers]]\nid="ollama"\ndisplay_name="Ollama"\nkind="local"\nbase_url="http://127.0.0.1:1"\n\n'
+        '[[providers]]\nid="gemini"\ndisplay_name="Gemini"\nkind="cloud"\nbase_url="https://x/v1"\napi_key="PUT_YOUR_KEY"\n\n'
+        '[[providers]]\nid="claude"\ndisplay_name="Claude"\nkind="cloud"\ndefault_model="claude-sonnet-4-6"\n',
+        encoding="utf-8",
+    )
+    client = TestClient(app)
+    by_id = {p["id"]: p for p in client.get("/api/providers/status").json()["providers"]}
+    assert by_id["ollama"]["state"] == "unreachable"  # nothing on 127.0.0.1:1
+    assert by_id["gemini"]["state"] == "needs_key"  # placeholder key
+    assert by_id["claude"]["state"] == "unknown"
+
+
 def test_non_pdf_upload_is_400(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     client = TestClient(app)
