@@ -66,6 +66,18 @@ def test_unknown_job_is_404(tmp_path, monkeypatch) -> None:
     assert client.get("/api/jobs/does-not-exist").status_code == 404
 
 
+def test_loose_upload_exports_under_target_dir(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    client = TestClient(app)
+    vault = str(tmp_path / "vault")
+    job_id = client.post("/api/jobs", files={"file": ("memo.pdf", _one_page_pdf(), "application/pdf")}).json()["job_id"]
+    written = client.post(
+        f"/api/jobs/{job_id}/export",
+        json={"vault_path": vault, "strategies": ["mirror"], "target_dir": "inbox"},
+    ).json()["written"]
+    assert any("inbox" in path and path.endswith("memo.md") for path in written)
+
+
 def test_non_pdf_upload_is_400(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     client = TestClient(app)
