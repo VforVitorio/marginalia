@@ -22,6 +22,7 @@ import {
 import { StepIndicator } from "./components/StepIndicator";
 import { ProviderPicker } from "./components/ProviderPicker";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { OnboardingModal } from "./components/OnboardingModal";
 
 import { Import } from "./steps/Import";
 import { Review } from "./steps/Review";
@@ -54,6 +55,11 @@ export default function App() {
   const [providers, setProviders] = useState<ProvidersResponse | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [providersLoading, setProvidersLoading] = useState(true);
+
+  // First-run onboarding gate — cleared to false once the user sees it.
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(
+    () => localStorage.getItem("marginalia.onboarded") !== "1",
+  );
 
   // Ref for the animated step container.
   const stepContainerRef = useRef<HTMLDivElement>(null);
@@ -136,6 +142,11 @@ export default function App() {
     transitionToStep("import");
   }
 
+  function handleOnboardingClose() {
+    localStorage.setItem("marginalia.onboarded", "1");
+    setShowOnboarding(false);
+  }
+
   async function handleProviderSelect(providerId: string, model?: string) {
     const updated = await selectProvider({ provider_id: providerId, model });
     setSettings(updated);
@@ -147,75 +158,81 @@ export default function App() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface transition-colors duration-300">
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <header className="border-b border-default bg-surface sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
-          {/* Wordmark */}
-          <a
-            href="/"
-            className="font-serif italic text-xl text-primary tracking-tight select-none flex-shrink-0"
-            aria-label="marginalia home"
-          >
-            marginalia
-          </a>
+    <>
+      {showOnboarding && (
+        <OnboardingModal onClose={handleOnboardingClose} />
+      )}
 
-          {/* Step indicator (centred) */}
-          <div className="flex-1 flex justify-center">
-            <StepIndicator
-              current={STEP_INDEX[step]}
-              maxStep={activeJob ? 2 : 0}
-              onStepClick={handleStepClick}
-            />
+      <div className="min-h-screen flex flex-col bg-surface transition-colors duration-300">
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <header className="border-b border-default bg-surface sticky top-0 z-30">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
+            {/* Wordmark */}
+            <a
+              href="/"
+              className="font-serif italic text-xl text-primary tracking-tight select-none flex-shrink-0"
+              aria-label="marginalia home"
+            >
+              marginalia
+            </a>
+
+            {/* Step indicator (centred) */}
+            <div className="flex-1 flex justify-center">
+              <StepIndicator
+                current={STEP_INDEX[step]}
+                maxStep={activeJob ? 2 : 0}
+                onStepClick={handleStepClick}
+              />
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <ProviderPicker
+                providers={providers}
+                loading={providersLoading}
+                onSelect={handleProviderSelect}
+              />
+              <ThemeToggle />
+            </div>
           </div>
+        </header>
 
-          {/* Controls */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <ProviderPicker
-              providers={providers}
-              loading={providersLoading}
-              onSelect={handleProviderSelect}
-            />
-            <ThemeToggle />
+        {/* ── Main content ─────────────────────────────────────────────── */}
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
+          <div ref={stepContainerRef}>
+            {step === "import" && (
+              <Import onJobCreated={handleJobCreated} />
+            )}
+
+            {step === "review" && activeJob && (
+              <Review
+                jobId={activeJob.jobId}
+                jobName={activeJob.name}
+                pageCount={activeJob.pageCount}
+                onExport={handleGoExport}
+                onBack={handleBackToImport}
+              />
+            )}
+
+            {step === "export" && activeJob && (
+              <Export
+                jobId={activeJob.jobId}
+                jobName={activeJob.name}
+                settings={settings}
+                onBack={handleBackToReview}
+                onDone={handleDone}
+              />
+            )}
           </div>
-        </div>
-      </header>
+        </main>
 
-      {/* ── Main content ─────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
-        <div ref={stepContainerRef}>
-          {step === "import" && (
-            <Import onJobCreated={handleJobCreated} />
-          )}
-
-          {step === "review" && activeJob && (
-            <Review
-              jobId={activeJob.jobId}
-              jobName={activeJob.name}
-              pageCount={activeJob.pageCount}
-              onExport={handleGoExport}
-              onBack={handleBackToImport}
-            />
-          )}
-
-          {step === "export" && activeJob && (
-            <Export
-              jobId={activeJob.jobId}
-              jobName={activeJob.name}
-              settings={settings}
-              onBack={handleBackToReview}
-              onDone={handleDone}
-            />
-          )}
-        </div>
-      </main>
-
-      {/* ── Footer ──────────────────────────────────────────────────── */}
-      <footer className="border-t border-default py-4 text-center">
-        <p className="text-2xs text-muted">
-          marginalia — Kindle Scribe → Obsidian
-        </p>
-      </footer>
-    </div>
+        {/* ── Footer ──────────────────────────────────────────────────── */}
+        <footer className="border-t border-default py-4 text-center">
+          <p className="text-2xs text-muted">
+            marginalia — Kindle Scribe → Obsidian
+          </p>
+        </footer>
+      </div>
+    </>
   );
 }

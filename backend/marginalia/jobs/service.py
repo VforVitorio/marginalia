@@ -6,11 +6,14 @@ This is the ONLY place that wires the OCR engine, the job store, and the event s
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 
 from marginalia.jobs.store import JobStore
 from marginalia.ocr.engine import OCREngine
 from marginalia.ocr.prompts import handwriting_prompt
+
+logger = logging.getLogger(__name__)
 
 
 async def run_ocr(
@@ -39,5 +42,6 @@ async def run_ocr(
         store.set_status(job_id, "done")
         yield {"type": "job_done"}
     except Exception as exc:  # OCR calls external engines; surface any failure instead of crashing the stream
+        logger.exception("OCR failed for job %s", job_id)
         store.set_status(job_id, "error")
         yield {"type": "error", "message": str(exc)}
