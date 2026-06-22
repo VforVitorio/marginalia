@@ -32,16 +32,16 @@ const STEPS: StepContent[] = [
           cloud subscription required unless you want one.
         </p>
         <ul className="space-y-2 text-sm text-secondary">
-          <StepBullet icon="📄">
+          <StepBullet icon={<DocIcon />}>
             Drop a PDF or let marginalia scan your synced Scribe folder.
           </StepBullet>
-          <StepBullet icon="✍️">
+          <StepBullet icon={<PenIcon />}>
             An OCR model reads each page of handwriting and drafts Markdown.
           </StepBullet>
-          <StepBullet icon="👁️">
+          <StepBullet icon={<EyeIcon />}>
             You review the draft side-by-side with the original image.
           </StepBullet>
-          <StepBullet icon="📁">
+          <StepBullet icon={<FolderIcon />}>
             Export preserves your source folder hierarchy inside your vault.
           </StepBullet>
         </ul>
@@ -108,14 +108,76 @@ function StepBullet({
   icon,
   children,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-2.5">
-      <span className="text-base leading-none mt-0.5 flex-shrink-0">{icon}</span>
+    <li className="flex items-start gap-3">
+      <span
+        className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center text-accent"
+        style={{ background: "color-mix(in srgb, var(--color-accent) 12%, transparent)" }}
+      >
+        {icon}
+      </span>
       <span className="leading-relaxed">{children}</span>
     </li>
+  );
+}
+
+// ── Line icons (16px, currentColor) ──────────────────────────────────────────
+
+function DocIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4 2h5l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M9 2v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PenIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M10.5 2.5l3 3L6 13l-3.5.5L3 10l7.5-7.5z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M9 4l3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.2c.4 0 .78.16 1.06.44L8 4.5h4.5A1.5 1.5 0 0 1 14 6v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
