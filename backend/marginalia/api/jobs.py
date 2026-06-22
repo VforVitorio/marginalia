@@ -86,7 +86,7 @@ def edit_page(
 @router.post("/jobs/{job_id}/export")
 def export_job(job_id: str, body: ExportBody, store: JobStore = Depends(get_store)) -> ExportOut:
     record = _load_or_404(store, job_id)
-    source = _note_source(record)
+    source = _note_source(record, body.target_dir)
     strategies = cast(list[Strategy], body.strategies)
     written = export_notes([source], strategies, Path(body.vault_path))
     return ExportOut(written=[str(path) for path in written])
@@ -124,9 +124,11 @@ def _safe_join(root: Path, rel_path: str) -> Path:
     return target
 
 
-def _note_source(record: JobRecord) -> NoteSource:
+def _note_source(record: JobRecord, target_dir: str = "") -> NoteSource:
     rel = PurePosixPath(record.source_rel_path)
-    source_rel_dir = "" if str(rel.parent) == "." else str(rel.parent)
+    mirror_dir = "" if str(rel.parent) == "." else str(rel.parent)
+    # Scanned notebooks mirror their source folder; loose uploads use the user-chosen target folder.
+    source_rel_dir = mirror_dir or target_dir.strip("/")
     return NoteSource(
         name=rel.stem,
         source_rel_dir=source_rel_dir,

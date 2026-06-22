@@ -28,6 +28,7 @@ interface ReviewProps {
   jobName: string;
   pageCount: number;
   onExport: () => void;
+  onBack: () => void;
 }
 
 interface LocalPage {
@@ -37,7 +38,7 @@ interface LocalPage {
   streaming: boolean;
 }
 
-export function Review({ jobId, jobName, pageCount, onExport }: ReviewProps) {
+export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewProps) {
   const [pages, setPages] = useState<LocalPage[]>(() =>
     Array.from({ length: pageCount }, (_, i) => ({
       index: i,
@@ -203,6 +204,9 @@ export function Review({ jobId, jobName, pageCount, onExport }: ReviewProps) {
           </span>
         </div>
 
+        <button className="btn-secondary" onClick={onBack}>
+          ← Back
+        </button>
         <button
           className="btn-primary"
           onClick={onExport}
