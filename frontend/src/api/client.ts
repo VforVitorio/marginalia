@@ -73,6 +73,7 @@ export interface SelectProviderRequest {
 export interface ExportRequest {
   vault_path: string;
   strategies: string[];
+  target_dir?: string;
 }
 
 // ── Error class ──────────────────────────────────────────────────────────────

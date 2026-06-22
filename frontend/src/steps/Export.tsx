@@ -21,6 +21,7 @@ interface ExportProps {
 
 export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps) {
   const [vaultPath, setVaultPath] = useState(settings?.vault_path ?? "");
+  const [targetDir, setTargetDir] = useState("");
   const [strategies, setStrategies] = useState<string[]>(
     settings?.strategies ?? ["mirror"],
   );
@@ -47,6 +48,7 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
       const res = await exportJob(jobId, {
         vault_path: vaultPath.trim(),
         strategies,
+        target_dir: targetDir.trim() || undefined,
       });
       setResult(res);
     } catch (err) {
@@ -136,6 +138,31 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
         />
         <p className="text-2xs text-muted">
           The absolute path to your Obsidian vault folder.
+        </p>
+      </div>
+
+      {/* Target subfolder (for loose imports) */}
+      <div className="flex flex-col gap-2">
+        <label
+          className="text-xs font-semibold uppercase tracking-widest text-muted"
+          htmlFor="target-dir"
+        >
+          Subfolder{" "}
+          <span className="font-normal normal-case tracking-normal text-muted">(optional)</span>
+        </label>
+        <input
+          id="target-dir"
+          className="input font-mono text-sm"
+          type="text"
+          placeholder="inbox"
+          value={targetDir}
+          onChange={(e) => setTargetDir(e.target.value)}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        <p className="text-2xs text-muted">
+          Where loose (drag-and-dropped) notebooks land. Scanned-folder imports keep their
+          original structure and ignore this.
         </p>
       </div>
 
