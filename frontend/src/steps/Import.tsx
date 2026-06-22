@@ -222,6 +222,9 @@ export function Import({ onJobCreated }: ImportProps) {
       <p className="text-xs text-muted text-center">
         Export from your Kindle Scribe: Notebooks → long-press cover → Export/Share → PDF
       </p>
+      <p className="text-2xs text-muted text-center italic">
+        Transcript quality depends on the OCR model you pick (top-right).
+      </p>
     </div>
   );
 }

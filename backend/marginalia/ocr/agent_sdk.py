@@ -19,6 +19,7 @@ from pathlib import Path
 from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, TextBlock, query
 
 from marginalia.ocr.engine import EngineInfo
+from marginalia.ocr.prompts import system_prompt
 
 
 class AgentSDKEngine:
@@ -39,6 +40,7 @@ class AgentSDKEngine:
             image_path.write_bytes(image_png)
             options = ClaudeAgentOptions(
                 model=self._model,
+                system_prompt=system_prompt(),
                 allowed_tools=["Read"],
                 permission_mode="bypassPermissions",  # ponytail: our own temp PNG, no permission prompts
                 max_turns=3,  # read the image + answer, with headroom
