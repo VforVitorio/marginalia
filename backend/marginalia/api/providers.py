@@ -64,37 +64,33 @@ def providers_status() -> ProvidersStatusOut:
 
 def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderStatus:
     current = _current_model(provider, settings)
-    base = {
-        "id": provider.id,
-        "display_name": provider.display_name,
-        "kind": provider.kind,
-        "current_model": current,
-    }
-    if provider.id == "claude":
+
+    def status(reachable: bool, models: list[str], state: str, hint: str) -> ProviderStatus:
         return ProviderStatus(
-            **base,
-            reachable=True,
-            models=[current] if current else [],
-            state="unknown",
-            hint="Uses your Claude Code subscription login (run `claude login` if needed).",
+            id=provider.id,
+            display_name=provider.display_name,
+            kind=provider.kind,
+            current_model=current,
+            reachable=reachable,
+            models=models,
+            state=state,
+            hint=hint,
         )
+
+    if provider.id == "claude":
+        models = [current] if current else []
+        return status(True, models, "unknown", "Uses your Claude Code subscription login (run `claude login`).")
     if provider.kind == "cloud":
         configured = bool(provider.api_key) and "PUT_YOUR" not in (provider.api_key or "")
         if not configured:
-            return ProviderStatus(**base, reachable=False, models=[], state="needs_key", hint="Add your API key.")
-        return ProviderStatus(**base, reachable=True, models=[current] if current else [], state="ready", hint="")
+            return status(False, [], "needs_key", "Add your API key.")
+        return status(True, [current] if current else [], "ready", "")
     reachable, models = runtime_status(provider)
     if not reachable:
-        return ProviderStatus(
-            **base,
-            reachable=False,
-            models=[],
-            state="unreachable",
-            hint=f"Start {provider.display_name} — its server isn't reachable.",
-        )
+        return status(False, [], "unreachable", f"Start {provider.display_name} — its server isn't reachable.")
     if not models:
-        return ProviderStatus(**base, reachable=True, models=[], state="no_model", hint="Running, but no model loaded.")
-    return ProviderStatus(**base, reachable=True, models=models, state="ready", hint="")
+        return status(True, [], "no_model", "Running, but no model loaded.")
+    return status(True, models, "ready", "")
 
 
 @router.post("/providers/select")
