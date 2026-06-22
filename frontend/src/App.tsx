@@ -37,6 +37,8 @@ const STEP_INDEX: Record<Step, number> = {
   export: 2,
 };
 
+const STEP_BY_INDEX: Step[] = ["import", "review", "export"];
+
 interface ActiveJob {
   jobId: string;
   name: string;
@@ -121,6 +123,19 @@ export default function App() {
     transitionToStep("import");
   }
 
+  // Navigate via the step indicator. A job unlocks all three steps; without one
+  // only Import is reachable. Never jump forward past current progress.
+  function handleStepClick(index: number) {
+    const maxStep = activeJob ? 2 : 0;
+    if (index > maxStep) return;
+    const target = STEP_BY_INDEX[index];
+    if (target && target !== step) transitionToStep(target);
+  }
+
+  function handleBackToImport() {
+    transitionToStep("import");
+  }
+
   async function handleProviderSelect(providerId: string, model?: string) {
     const updated = await selectProvider({ provider_id: providerId, model });
     setSettings(updated);
@@ -147,7 +162,11 @@ export default function App() {
 
           {/* Step indicator (centred) */}
           <div className="flex-1 flex justify-center">
-            <StepIndicator current={STEP_INDEX[step]} />
+            <StepIndicator
+              current={STEP_INDEX[step]}
+              maxStep={activeJob ? 2 : 0}
+              onStepClick={handleStepClick}
+            />
           </div>
 
           {/* Controls */}
@@ -175,6 +194,7 @@ export default function App() {
               jobName={activeJob.name}
               pageCount={activeJob.pageCount}
               onExport={handleGoExport}
+              onBack={handleBackToImport}
             />
           )}
 

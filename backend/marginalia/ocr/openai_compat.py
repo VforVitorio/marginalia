@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator
 import httpx
 
 from marginalia.ocr.engine import EngineInfo, EngineKind
+from marginalia.ocr.prompts import system_prompt
 
 
 class OpenAICompatEngine:
@@ -73,13 +74,14 @@ class OpenAICompatEngine:
             "model": self._model,
             "stream": True,
             "messages": [
+                {"role": "system", "content": system_prompt()},
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
                         {"type": "image_url", "image_url": {"url": data_url}},
                     ],
-                }
+                },
             ],
         }
 

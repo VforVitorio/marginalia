@@ -65,6 +65,7 @@ class PageEdit(BaseModel):
 class ExportBody(BaseModel):
     vault_path: str
     strategies: list[str]
+    target_dir: str = ""  # destination subfolder for loose uploads (ignored for scanned notebooks)
 
 
 class ExportOut(BaseModel):
