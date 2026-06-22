@@ -355,7 +355,11 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
       aria-modal="true"
       aria-labelledby="onboarding-title"
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(10,9,8,0.55)" }}
+      style={{
+        background: "rgba(10,9,8,0.40)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+      }}
       /* Clicking the backdrop closes the modal. */
       onMouseDown={(e) => {
         if (e.target === backdropRef.current) closeWithAnimation();
@@ -363,10 +367,14 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
     >
       <div
         ref={cardRef}
-        className="relative w-full max-w-md rounded-2xl shadow-2xl flex flex-col gap-6 p-7"
+        className="relative w-full max-w-md rounded-2xl flex flex-col gap-6 p-7"
         style={{
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-border-strong)",
+          // Acrylic / frosted glass: translucent surface + blur, subtle border, top sheen.
+          background: "color-mix(in srgb, var(--color-surface) 72%, transparent)",
+          backdropFilter: "blur(22px) saturate(150%)",
+          WebkitBackdropFilter: "blur(22px) saturate(150%)",
+          border: "1px solid color-mix(in srgb, var(--color-border-strong) 55%, transparent)",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.20)",
         }}
       >
         {/* ── Header ───────────────────────────────────────────────── */}
