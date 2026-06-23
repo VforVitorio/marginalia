@@ -18,6 +18,7 @@ from marginalia.api.schemas import (
     SettingsUpdate,
 )
 from marginalia.api.sse import sse_stream
+from marginalia.claude_auth import is_claude_authenticated
 from marginalia.config import (
     ProviderConfig,
     Settings,
@@ -27,6 +28,7 @@ from marginalia.config import (
 )
 from marginalia.models_admin import (
     ensure_loaded,
+    ensure_runtime_ready,
     list_models,
     loadable_models,
     pull_model,
@@ -93,10 +95,12 @@ def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderSt
         )
 
     if provider.id == "claude":
-        # ponytail: no cheap offline auth check exists — report honestly as "unknown" rather than a
-        # fake "authenticated"; a real failure surfaces as an OCR `error` event. Active cached probe = #11.
+        # ponytail: presence check, not validity — a detected-but-expired token still fails at OCR
+        # time (see claude_auth). Upgrade path: a cheap cached billed probe (#11).
         models = [current] if current else []
-        return status(True, models, "unknown", "Uses your Claude Code subscription (run `claude login`).")
+        if is_claude_authenticated():
+            return status(True, models, "ready", "Signed in via your Claude Code subscription.")
+        return status(False, models, "unknown", "Sign in with `claude login` to use Claude.")
     if provider.kind == "cloud":
         configured = bool(provider.api_key) and "PUT_YOUR" not in (provider.api_key or "")
         if not configured:
@@ -127,8 +131,21 @@ def provider_models(provider_id: str) -> list[str]:
 
 @router.get("/providers/{provider_id}/loadable")
 def loadable(provider_id: str) -> list[str]:
-    """Downloaded models the app can load headless (LM Studio); empty for other providers."""
-    return loadable_models(_provider_or_404(provider_id, load_settings()))
+    """Downloaded models the app can load headless (LM Studio); empty for other providers.
+
+    Returns 503 (not an empty list) when LM Studio can't be reached/started, so the UI can say
+    "open LM Studio" instead of the misleading "no models downloaded".
+    """
+    provider = _provider_or_404(provider_id, load_settings())
+    if not supports_load(provider):
+        return []
+    if not ensure_runtime_ready(provider):
+        raise HTTPException(
+            status_code=503,
+            detail="LM Studio isn't running and couldn't be started automatically. "
+            "Open the LM Studio app (or enable 'run server on login' in its settings), then try again.",
+        )
+    return loadable_models(provider)
 
 
 @router.post("/providers/{provider_id}/pull")
@@ -150,7 +167,8 @@ async def load(provider_id: str, body: PullBody) -> ProviderStatus:
     if not loaded:
         raise HTTPException(
             status_code=502,
-            detail=f"Could not load '{body.model}'. Is LM Studio's `lms` CLI installed (`lmstudio install-cli`)?",
+            detail=f"Could not load '{body.model}'. Open the LM Studio app (headless start can fail when "
+            "the GUI is closed), make sure `lms` is installed (`lmstudio install-cli`), then try again.",
         )
     return _provider_status(provider, settings)
 

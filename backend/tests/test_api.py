@@ -86,11 +86,31 @@ def test_providers_status_reports_state(tmp_path, monkeypatch) -> None:
         '[[providers]]\nid="claude"\ndisplay_name="Claude"\nkind="cloud"\ndefault_model="claude-sonnet-4-6"\n',
         encoding="utf-8",
     )
+    monkeypatch.setattr("marginalia.api.providers.is_claude_authenticated", lambda: False)
     client = TestClient(app)
     by_id = {p["id"]: p for p in client.get("/api/providers/status").json()["providers"]}
     assert by_id["ollama"]["state"] == "unreachable"  # nothing on 127.0.0.1:1
     assert by_id["gemini"]["state"] == "needs_key"  # placeholder key
-    assert by_id["claude"]["state"] == "unknown"
+    assert by_id["claude"]["state"] == "unknown"  # probe says not signed in
+
+
+def test_claude_status_ready_when_authenticated(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "providers.toml").write_text(
+        '[[providers]]\nid="claude"\ndisplay_name="Claude"\nkind="cloud"\ndefault_model="claude-sonnet-4-6"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("marginalia.api.providers.is_claude_authenticated", lambda: True)
+    client = TestClient(app)
+    claude = client.get("/api/providers/status").json()["providers"][0]
+    assert claude["state"] == "ready"  # credential detected → signed in
+
+
+def test_claude_auth_detects_env_token(monkeypatch) -> None:
+    from marginalia.claude_auth import is_claude_authenticated
+
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "stub-token")
+    assert is_claude_authenticated() is True
 
 
 def test_set_cloud_key_makes_gemini_ready(tmp_path, monkeypatch) -> None:

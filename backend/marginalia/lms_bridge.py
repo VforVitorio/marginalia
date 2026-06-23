@@ -31,8 +31,9 @@ import time
 DEFAULT_PORT = 1234
 DEFAULT_HOST = "127.0.0.1"
 
-# Timeouts (seconds): fast for queries, generous for VRAM loads.
+# Timeouts (seconds): fast for queries, generous for VRAM loads and the cold-start "wake".
 _QUERY_TIMEOUT = 5
+_LIST_TIMEOUT = 30  # `lms ls/ps` can be slow while the service "wakes up" from cold
 _SERVER_START_TIMEOUT = 30
 _LOAD_TIMEOUT = 120
 _PROBE_TIMEOUT = 0.5
@@ -162,15 +163,27 @@ def _run_ok(cmd: list[str], timeout: int) -> bool:
         return False
 
 
-def _run_json(cmd: list[str]) -> object:
-    """Run *cmd*, parse stdout as JSON. None on absence/failure/invalid JSON."""
+def _run_json(cmd: list[str], timeout: int = _LIST_TIMEOUT) -> object:
+    """Run *cmd*, parse stdout as JSON. None on absence/failure/invalid JSON.
+
+    `lms` prints a ``Waking up LM Studio service...`` preamble before the JSON when the
+    service is cold, so we parse from the first ``[``/``{`` rather than the whole stdout.
+    """
     if not lms_available():
         return None
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=_QUERY_TIMEOUT)
+        result = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
     except (subprocess.SubprocessError, OSError):
         return None
+    return _parse_json_lenient(result.stdout)
+
+
+def _parse_json_lenient(text: str) -> object:
+    """``json.loads`` from the first ``[``/``{``, skipping any non-JSON preamble. None on failure."""
+    starts = [index for index in (text.find("["), text.find("{")) if index != -1]
+    if not starts:
+        return None
     try:
-        return json.loads(result.stdout)
+        return json.loads(text[min(starts) :])
     except json.JSONDecodeError:
         return None
