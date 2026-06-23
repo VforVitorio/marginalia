@@ -37,6 +37,17 @@ def test_unload_needs_a_target(monkeypatch) -> None:
     assert bridge.unload_model() is False
 
 
+def test_parse_json_lenient_skips_waking_preamble() -> None:
+    # `lms` prints this line before the JSON when the service is cold.
+    raw = 'Waking up LM Studio service...\n[{"modelKey": "gemma-4-e2b"}]'
+    assert bridge._parse_json_lenient(raw) == [{"modelKey": "gemma-4-e2b"}]
+
+
+def test_parse_json_lenient_none_when_no_json() -> None:
+    assert bridge._parse_json_lenient("Waking up LM Studio service...\n") is None
+    assert bridge._parse_json_lenient("") is None
+
+
 def test_is_server_up_false_for_closed_port() -> None:
     # Port 0 is never listening; probe must fail fast, not raise.
     assert bridge.is_server_up(port=0) is False
