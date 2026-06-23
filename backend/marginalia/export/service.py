@@ -44,11 +44,18 @@ def _render_index(links: tuple[str, ...]) -> str:
 
 
 def export_notes(sources: list[NoteSource], strategies: list[Strategy], vault_root: Path) -> list[Path]:
-    """Plan, render, and write the notes into the vault. Returns the written file paths."""
+    """Plan, render, and write the notes into the vault. Returns the written file paths.
+
+    Each destination is confined to ``vault_root`` — a plan whose path escapes it (e.g. a ``..`` in a
+    loose upload's target folder) is skipped rather than written outside the vault (path-traversal guard).
+    """
     env = _environment()
+    root = vault_root.resolve()
     written: list[Path] = []
     for plan in build_plan(sources, strategies):
         dest = vault_root / Path(plan.dest_path)
+        if not dest.resolve().is_relative_to(root):
+            continue  # destination escapes the vault — refuse to write it
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(render_note(env, plan), encoding="utf-8")
         written.append(dest)

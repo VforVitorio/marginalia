@@ -31,3 +31,12 @@ def test_export_mirror_only_skips_index(tmp_path) -> None:
     sources = [NoteSource(name="a", source_rel_dir="", pages_markdown=["x"])]
     written = export_notes(sources, ["mirror"], vault)
     assert written == [vault / "a.md"]
+
+
+def test_export_refuses_to_escape_the_vault(tmp_path) -> None:
+    # A loose-upload target folder of ".." must not write outside the vault (path traversal).
+    vault = tmp_path / "vault"
+    sources = [NoteSource(name="x", source_rel_dir="../escape", pages_markdown=["hi"])]
+    written = export_notes(sources, ["mirror"], vault)
+    assert written == []  # escaping plan skipped
+    assert not (tmp_path / "escape").exists()

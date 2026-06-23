@@ -41,7 +41,8 @@ async def run_ocr(
             yield {"type": "page_done", "index": page.index}
         store.set_status(job_id, "done")
         yield {"type": "job_done"}
-    except Exception as exc:  # OCR calls external engines; surface any failure instead of crashing the stream
+    except Exception:  # OCR calls external engines; surface a failure instead of crashing the stream
+        # Log the full exception server-side; send the client a generic message (don't leak internals).
         logger.exception("OCR failed for job %s", job_id)
         store.set_status(job_id, "error")
-        yield {"type": "error", "message": str(exc)}
+        yield {"type": "error", "message": "OCR failed — check the selected provider and model, then try again."}

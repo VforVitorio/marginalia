@@ -52,6 +52,7 @@ def get_job(job_id: str, store: JobStore = Depends(get_store)) -> JobOut:
 
 @router.get("/jobs/{job_id}/pages/{index}/image")
 def get_page_image(job_id: str, index: int, store: JobStore = Depends(get_store)) -> FileResponse:
+    _load_or_404(store, job_id)  # validates the job id (it builds a filesystem path) and that the job exists
     path = store.page_image_path(job_id, index)
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Page image not found.")
@@ -117,7 +118,7 @@ def _scan_root() -> Path:
 def _safe_join(root: Path, rel_path: str) -> Path:
     """Resolve ``rel_path`` under ``root``, rejecting anything that escapes it (path traversal)."""
     target = (root / rel_path).resolve()
-    if root.resolve() not in (target, *target.parents):
+    if not target.is_relative_to(root.resolve()):
         raise HTTPException(status_code=400, detail="Path escapes the scan folder.")
     if not target.is_file():
         raise HTTPException(status_code=404, detail="PDF not found.")
@@ -153,5 +154,5 @@ def _page_out(job_id: str, index: int, markdown: str, done: bool) -> JobPageOut:
 def _load_or_404(store: JobStore, job_id: str) -> JobRecord:
     try:
         return store.load(job_id)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):  # missing job, or an invalid (path-traversal) job id
         raise HTTPException(status_code=404, detail="Job not found.") from None

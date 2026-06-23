@@ -7,6 +7,7 @@ Each job is a directory ``data/jobs/{id}/`` holding ``job.json`` (state, pages, 
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,6 +15,16 @@ from pydantic import BaseModel, Field
 
 from marginalia.config import DATA_DIR
 from marginalia.ingest.pdf import Notebook
+
+# job_id reaches the filesystem from the URL, so it must be exactly the shape create() produces
+# (uuid4().hex). Anything else (path separators, "..", absolute paths) is rejected — path-traversal guard.
+_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+
+
+def _validate_job_id(job_id: str) -> str:
+    if not _JOB_ID_RE.fullmatch(job_id):
+        raise ValueError(f"Invalid job id: {job_id!r}")
+    return job_id
 
 
 class JobPage(BaseModel):
@@ -88,7 +99,7 @@ class JobStore:
         return record
 
     def _job_dir(self, job_id: str) -> Path:
-        return self._root / job_id
+        return self._root / _validate_job_id(job_id)
 
     def _record_path(self, job_id: str) -> Path:
         return self._job_dir(job_id) / "job.json"
