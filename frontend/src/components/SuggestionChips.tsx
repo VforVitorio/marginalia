@@ -24,7 +24,7 @@ export function SuggestionChips({ suggestions, selected, onSelect }: SuggestionC
           type="button"
           role="listitem"
           className={[
-            "text-2xs font-mono px-2 py-0.5 rounded-full border transition-colors truncate max-w-full",
+            "text-2xs font-mono px-2.5 py-1 rounded-full border transition-colors truncate max-w-full",
             selected === suggestion
               ? "border-terracotta-400/60 bg-terracotta-300/10 text-primary"
               : "border-default bg-surface-2 text-muted hover:border-terracotta-400/40 hover:text-primary",
