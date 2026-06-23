@@ -42,17 +42,20 @@ It's not laziness about portability: export quirks differ enough between devices
 
 ## Getting started
 
-You'll need: Python 3.12+, Ollama or LM Studio if you want local OCR, a Kindle Scribe, and an Obsidian vault.
+You'll need: Python 3.12+, Node.js 20+, Ollama or LM Studio if you want local OCR, a Kindle Scribe, and an Obsidian vault.
 
 ```bash
 git clone https://github.com/VforVitorio/marginalia.git
 cd marginalia
 uv sync
-cp providers.example.toml providers.toml   # set your vault path and Gemini key if you have one
+cp providers.example.toml providers.toml          # set your vault path and Gemini key if you have one
+cd frontend && npm ci && npm run build && cd ..    # build the UI (the backend serves it)
 uv run uvicorn marginalia.api.main:app
 ```
 
 Open http://localhost:8000 and import a notebook. (The vault path and almost everything else is set from the UI — `providers.toml` is just the starting point and where API keys live.)
+
+For development, run the API and the Vite dev server separately: `npm run dev` in `frontend/` serves the UI on `:5173` and proxies `/api` to the backend.
 
 ## How it works
 
@@ -73,7 +76,7 @@ Edit, restart the backend, done.
 
 ## Status
 
-Early. The MVP is still coming together — the architecture is written down in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md) if you want the detail. Rough order: backend skeleton → OCR adapters + structure mapper → review/export UI → glue and polish.
+The MVP works end-to-end — import a Scribe PDF, OCR it (local or cloud), review side-by-side, export to your vault (that's the demo above). What's left before the first tagged release is polish: frontend linting, mobile/responsive tuning, a one-command install, and an end-to-end verification pass. Architecture and conventions live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md).
 
 ## Trademarks
 
@@ -89,7 +92,9 @@ PRs welcome, Scribe-only. Issues about other devices will be closed — not out 
 
 ## Roadmap (later, maybe)
 
+- One-command install (and maybe a packaged build)
 - Process multiple notebooks at once
+- Pull in Kindle highlights (`My Clippings.txt`)
 - Custom export templates
 - Full-text search across exports
 - Scheduled pull from Drive
@@ -101,7 +106,7 @@ PRs welcome, Scribe-only. Issues about other devices will be closed — not out 
 
 **Do I need an API key?** For local OCR (Ollama), no. For cloud, you either use your Claude subscription (no API key) or a free Gemini key from AI Studio.
 
-**Does it run on Mac/Windows/Linux?** Yes. Pure-Python backend, web frontend. Tested on macOS and Linux; Windows should work but isn't officially tested yet.
+**Does it run on Mac/Windows/Linux?** Yes — pure-Python backend, web frontend. Run on Windows, macOS, and Linux.
 
 **What if the OCR is bad?** That's what the review is for: you see the original image and the text, and you edit it before exporting. If it's still bad, run that page through a cloud backend (Claude or Gemini) — they hold up better on messy handwriting.
 
