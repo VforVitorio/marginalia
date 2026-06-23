@@ -65,6 +65,20 @@ def loadable_models(provider: ProviderConfig) -> list[str]:
     return lms_bridge.downloaded_model_ids()
 
 
+def ensure_runtime_ready(provider: ProviderConfig) -> bool:
+    """For LM Studio, start its server (headless if possible) and report whether it's reachable.
+
+    Non-LM-Studio providers are always "ready" here (nothing to start). Lets the API tell
+    "LM Studio isn't running" apart from "running but no models downloaded" — note that when the
+    GUI is closed, ``lms daemon up`` may fail to cold-start (LM Studio limitation, see lms #97),
+    so this returns False and the UI asks the user to open the app.
+    """
+    if provider.id != "lmstudio":
+        return True
+    host, port = _host_port(provider.base_url or "", lms_bridge.DEFAULT_PORT)
+    return lms_bridge.ensure_server_up(host, port)
+
+
 def ensure_loaded(provider: ProviderConfig, model: str) -> bool:
     """Start LM Studio's server (headless if needed) and load *model*. LM Studio only; blocking.
 
@@ -73,8 +87,7 @@ def ensure_loaded(provider: ProviderConfig, model: str) -> bool:
     """
     if provider.id != "lmstudio":
         return False
-    host, port = _host_port(provider.base_url or "", lms_bridge.DEFAULT_PORT)
-    if not lms_bridge.ensure_server_up(host, port):
+    if not ensure_runtime_ready(provider):
         return False
     return lms_bridge.load_model(model)
 
