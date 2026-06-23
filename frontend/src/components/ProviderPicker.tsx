@@ -11,7 +11,7 @@
  * loadable-model list on demand.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getLoadableModels,
   loadModel,
@@ -32,15 +32,31 @@ interface ProviderPickerProps {
 
 export function ProviderPicker({ status, active, loading, onSelect, onRefresh }: ProviderPickerProps) {
   const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const activeProvider = status?.find((p) => p.id === active) ?? null;
+
+  // Escape closes the popover and returns focus to the toggle (WCAG 2.1.2/2.4.3).
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <div className="relative">
       <button
+        ref={toggleRef}
         className="btn-secondary flex items-center gap-2 text-sm"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="true"
+        aria-controls="provider-panel"
         disabled={loading}
       >
         <ProviderKindIcon kind={activeProvider?.kind ?? "local"} />
@@ -57,7 +73,8 @@ export function ProviderPicker({ status, active, loading, onSelect, onRefresh }:
 
       {open && status && (
         <div
-          role="listbox"
+          id="provider-panel"
+          aria-label="OCR providers"
           className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-default bg-surface shadow-warm-lg overflow-hidden"
         >
           <ul className="py-1 max-h-[26rem] overflow-y-auto">
