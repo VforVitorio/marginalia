@@ -173,18 +173,18 @@ export default function App() {
       <div className="min-h-screen flex flex-col bg-surface transition-colors duration-300">
         {/* ── Header ──────────────────────────────────────────────────── */}
         <header className="border-b border-default bg-surface sticky top-0 z-30">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2 sm:h-14 sm:py-0 flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4">
             {/* Wordmark */}
             <a
               href="/"
-              className="font-serif italic text-xl text-primary tracking-tight select-none flex-shrink-0"
+              className="order-1 font-serif italic text-xl text-primary tracking-tight select-none flex-shrink-0"
               aria-label="marginalia home"
             >
               marginalia
             </a>
 
-            {/* Step indicator (centred) */}
-            <div className="flex-1 flex justify-center">
+            {/* Step indicator — own row on mobile, centred inline on sm+ */}
+            <div className="order-3 sm:order-2 w-full sm:w-auto sm:flex-1 flex justify-center">
               <StepIndicator
                 current={STEP_INDEX[step]}
                 maxStep={activeJob ? 2 : 0}
@@ -193,7 +193,7 @@ export default function App() {
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="order-2 sm:order-3 ml-auto sm:ml-0 flex items-center gap-2 flex-shrink-0">
               <ProviderPicker
                 status={status}
                 active={settings?.active_provider ?? null}
@@ -220,7 +220,7 @@ export default function App() {
                   />
                   <circle cx="8" cy="11" r="0.65" fill="currentColor" />
                 </svg>
-                <span>Guide</span>
+                <span className="hidden sm:inline">Guide</span>
               </button>
 
               <ThemeToggle />
