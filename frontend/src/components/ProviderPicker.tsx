@@ -15,6 +15,7 @@ import { useState } from "react";
 import {
   getLoadableModels,
   loadModel,
+  pullModel,
   setProviderKey,
   type ProviderState,
   type ProviderStatus,
@@ -96,10 +97,12 @@ interface ProviderRowProps {
 }
 
 function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowProps) {
-  const [expanded, setExpanded] = useState<null | "models" | "load" | "key">(null);
+  const [expanded, setExpanded] = useState<null | "models" | "load" | "key" | "pull">(null);
 
   const selectable = provider.state === "ready" || provider.state === "unknown";
-  const canLoad = provider.state === "unreachable" || provider.state === "no_model";
+  const isOllama = provider.id === "ollama";
+  const canLoad = !isOllama && (provider.state === "unreachable" || provider.state === "no_model");
+  const canPull = isOllama && (provider.state === "no_model" || provider.state === "ready");
   const canEnterKey = provider.state === "needs_key";
 
   async function handleRowClick() {
@@ -133,6 +136,12 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
           <RowAction
             label="Load"
             onClick={() => setExpanded((e) => (e === "load" ? null : "load"))}
+          />
+        )}
+        {canPull && (
+          <RowAction
+            label="Pull"
+            onClick={() => setExpanded((e) => (e === "pull" ? null : "pull"))}
           />
         )}
         {canEnterKey && (
@@ -171,6 +180,17 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
           onSaved={async () => {
             setExpanded(null);
             await onRefresh();
+          }}
+        />
+      )}
+
+      {expanded === "pull" && (
+        <PullPanel
+          providerId={provider.id}
+          onPulled={async (model) => {
+            setExpanded(null);
+            await onRefresh();
+            await onSelect(model);
           }}
         />
       )}
@@ -276,6 +296,80 @@ function KeyPanel({ providerId, onSaved }: { providerId: string; onSaved: () => 
       </div>
       {error && <p className="text-2xs" style={{ color: "var(--color-error)" }}>{error}</p>}
       <p className="text-2xs text-muted">Stored locally in your settings, never committed.</p>
+    </div>
+  );
+}
+
+// ── Pull panel (Ollama: enter a model name and pull it) ──────────────────────────
+
+const RECOMMENDED_MODELS = ["qwen3-vl:4b", "qwen3-vl:2b", "minicpm-v", "llama3.2-vision"];
+
+function PullPanel({
+  providerId,
+  onPulled,
+}: {
+  providerId: string;
+  onPulled: (model: string) => Promise<void>;
+}) {
+  const [model, setModel] = useState("");
+  const [pulling, setPulling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handlePull() {
+    const target = model.trim();
+    if (!target) return;
+    setPulling(true);
+    setError(null);
+    try {
+      await pullModel(providerId, target);
+      await onPulled(target);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pull failed.");
+    } finally {
+      setPulling(false);
+    }
+  }
+
+  return (
+    <div className="px-3 pb-2.5 pt-0.5 border-t border-default bg-surface flex flex-col gap-1.5">
+      <div className="flex flex-wrap gap-1 pt-0.5">
+        {RECOMMENDED_MODELS.map((rec) => (
+          <button
+            key={rec}
+            className="rounded-md border border-default bg-surface-2 px-2 py-0.5 text-2xs text-primary hover:border-accent hover:text-accent transition-colors disabled:opacity-50"
+            onClick={() => setModel(rec)}
+            disabled={pulling}
+          >
+            {rec}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="e.g. qwen3-vl:4b"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handlePull();
+          }}
+          className="flex-1 min-w-0 rounded-lg border border-default bg-surface-2 px-2 py-1.5 text-xs text-primary outline-none focus:border-accent"
+          disabled={pulling}
+        />
+        <button
+          className="btn-primary text-xs py-1.5 px-3"
+          onClick={handlePull}
+          disabled={pulling || !model.trim()}
+        >
+          {pulling ? "Pulling…" : "Pull"}
+        </button>
+      </div>
+      {pulling && (
+        <p className="text-2xs text-muted italic">Pulling… this can take a while.</p>
+      )}
+      {error && <p className="text-2xs" style={{ color: "var(--color-error)" }}>{error}</p>}
     </div>
   );
 }
