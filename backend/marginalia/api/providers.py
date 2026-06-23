@@ -8,13 +8,15 @@ from fastapi.responses import StreamingResponse
 from marginalia.api.schemas import (
     ProviderOut,
     ProvidersOut,
+    ProvidersStatusOut,
+    ProviderStatus,
     PullBody,
     SelectProvider,
     SettingsUpdate,
 )
 from marginalia.api.sse import sse_stream
 from marginalia.config import ProviderConfig, Settings, load_providers, load_settings, save_settings
-from marginalia.models_admin import list_models, pull_model, supports_pull
+from marginalia.models_admin import list_models, pull_model, runtime_status, supports_pull
 
 router = APIRouter()
 
@@ -51,6 +53,44 @@ def list_provider_catalogue() -> ProvidersOut:
         active=settings.active_provider,
         claude_authenticated=_claude_authenticated(),
     )
+
+
+@router.get("/providers/status")
+def providers_status() -> ProvidersStatusOut:
+    """Live per-provider status: runtime reachable? which models loaded? what's the next step?"""
+    settings = load_settings()
+    return ProvidersStatusOut(providers=[_provider_status(provider, settings) for provider in load_providers()])
+
+
+def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderStatus:
+    current = _current_model(provider, settings)
+
+    def status(reachable: bool, models: list[str], state: str, hint: str) -> ProviderStatus:
+        return ProviderStatus(
+            id=provider.id,
+            display_name=provider.display_name,
+            kind=provider.kind,
+            current_model=current,
+            reachable=reachable,
+            models=models,
+            state=state,
+            hint=hint,
+        )
+
+    if provider.id == "claude":
+        models = [current] if current else []
+        return status(True, models, "unknown", "Uses your Claude Code subscription login (run `claude login`).")
+    if provider.kind == "cloud":
+        configured = bool(provider.api_key) and "PUT_YOUR" not in (provider.api_key or "")
+        if not configured:
+            return status(False, [], "needs_key", "Add your API key.")
+        return status(True, [current] if current else [], "ready", "")
+    reachable, models = runtime_status(provider)
+    if not reachable:
+        return status(False, [], "unreachable", f"Start {provider.display_name} — its server isn't reachable.")
+    if not models:
+        return status(True, [], "no_model", "Running, but no model loaded.")
+    return status(True, models, "ready", "")
 
 
 @router.post("/providers/select")
