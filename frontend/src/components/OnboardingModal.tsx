@@ -33,16 +33,22 @@ const STEPS: StepContent[] = [
         </p>
         <ul className="space-y-2 text-sm text-secondary">
           <StepBullet icon={<DocIcon />}>
-            Drop a PDF or let marginalia scan your synced Scribe folder.
+            Drop a single PDF, or point marginalia at your Scribe sync folder
+            and pick a notebook — the folder structure becomes your Obsidian
+            layout automatically.
           </StepBullet>
           <StepBullet icon={<PenIcon />}>
-            An OCR model reads each page of handwriting and drafts Markdown.
+            A local or cloud OCR model reads each handwritten page and drafts
+            Markdown — nothing leaves your machine unless you choose a cloud
+            provider.
           </StepBullet>
           <StepBullet icon={<EyeIcon />}>
-            You review the draft side-by-side with the original image.
+            You review the draft side-by-side with the original image and edit
+            any mistakes before exporting.
           </StepBullet>
           <StepBullet icon={<FolderIcon />}>
-            Export preserves your source folder hierarchy inside your vault.
+            Export writes Markdown files into your Obsidian vault, mirroring
+            the source folder hierarchy.
           </StepBullet>
         </ul>
       </div>
@@ -53,25 +59,25 @@ const STEPS: StepContent[] = [
     body: (
       <div className="space-y-3">
         <p className="text-secondary text-sm leading-relaxed">
-          Transcript quality depends on the model you choose. Pick the option
-          that fits your privacy and quality needs.
+          marginalia supports two provider types. Pick the one that fits your
+          privacy and quality needs — you can switch at any time.
         </p>
         <div className="grid gap-2">
           <OptionCard
             label="Local (private)"
-            description="Qwen3-VL via Ollama or LM Studio — runs on your machine, nothing leaves it."
+            description="Qwen3-VL via Ollama or LM Studio — runs entirely on your machine. Start Ollama/LM Studio, load a model there, then select it here."
             badge="Privacy first"
           />
           <OptionCard
             label="Cloud"
-            description="Claude or Gemini — best accuracy, especially on messy handwriting."
+            description="Claude (Anthropic subscription) or Gemini (free-tier key) — highest accuracy on messy handwriting. Requires an internet connection and your credentials."
             badge="Best quality"
           />
         </div>
         <p className="text-xs text-muted pt-1">
-          You can switch models any time from the{" "}
+          Switch providers any time from the{" "}
           <span className="font-medium text-accent">provider picker</span> in
-          the top-right corner.
+          the header. A model must be loaded and selected before OCR can start.
         </p>
       </div>
     ),
@@ -85,16 +91,19 @@ const STEPS: StepContent[] = [
         </p>
         <ol className="space-y-2 text-sm">
           <NumberedBullet n={1} label="Import">
-            Drag a Scribe PDF onto the Import panel, or point marginalia at
-            your synced folder and pick a notebook.
+            Drag a loose PDF onto the Import panel (you pick the destination
+            on export), or use the <em>Scribe folder</em> tab to point
+            marginalia at the folder your Kindle Scribe syncs to — its
+            sub-folders will become your Obsidian structure automatically.
           </NumberedBullet>
           <NumberedBullet n={2} label="Review">
-            Each page shows the image on the left and the OCR draft on the
-            right. Edit any mistakes before moving on.
+            Each page shows the original image on the left and the OCR draft
+            on the right. Edit any mistakes directly in the text before
+            moving on.
           </NumberedBullet>
           <NumberedBullet n={3} label="Export">
-            Choose your Obsidian vault path, confirm the folder structure, and
-            export. Done.
+            Choose your Obsidian vault path, confirm the folder layout, and
+            export. marginalia writes one Markdown file per notebook page.
           </NumberedBullet>
         </ol>
       </div>
