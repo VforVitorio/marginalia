@@ -29,7 +29,28 @@ export interface ProviderInfo {
 export interface ProvidersResponse {
   providers: ProviderInfo[];
   active: string | null;
-  claude_authenticated: boolean;
+}
+
+export type ProviderState =
+  | "ready"
+  | "no_model"
+  | "unreachable"
+  | "needs_key"
+  | "unknown";
+
+export interface ProviderStatus {
+  id: string;
+  display_name: string;
+  kind: "local" | "cloud";
+  reachable: boolean;
+  models: string[];
+  current_model: string | null;
+  state: ProviderState;
+  hint: string;
+}
+
+export interface ProvidersStatusResponse {
+  providers: ProviderStatus[];
 }
 
 export interface ScannedPdf {
@@ -145,6 +166,42 @@ export async function selectProvider(req: SelectProviderRequest): Promise<Settin
     method: "POST",
     body: JSON.stringify(req),
   });
+}
+
+/** Live per-provider status (reachable / models loaded / next step). */
+export async function getProvidersStatus(): Promise<ProvidersStatusResponse> {
+  return apiFetch<ProvidersStatusResponse>("/providers/status");
+}
+
+/** Downloaded models the app can load headless (LM Studio); [] for other providers. */
+export async function getLoadableModels(providerId: string): Promise<string[]> {
+  return apiFetch<string[]>(`/providers/${providerId}/loadable`);
+}
+
+/** Start LM Studio (headless if needed) and load a model. Resolves once loaded (can take ~2 min). */
+export async function loadModel(providerId: string, model: string): Promise<ProviderStatus> {
+  return apiFetch<ProviderStatus>(`/providers/${providerId}/load`, {
+    method: "POST",
+    body: JSON.stringify({ model }),
+  });
+}
+
+/** Save a cloud API key entered in the UI (persisted to settings.json, not providers.toml). */
+export async function setProviderKey(providerId: string, apiKey: string): Promise<ProviderStatus> {
+  return apiFetch<ProviderStatus>(`/providers/${providerId}/key`, {
+    method: "POST",
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+}
+
+// ── Path suggestions (settings / onboarding inputs) ────────────────────────────
+
+export async function getVaultSuggestions(): Promise<string[]> {
+  return apiFetch<string[]>("/paths/vaults");
+}
+
+export async function getScanFolderSuggestions(): Promise<string[]> {
+  return apiFetch<string[]>("/paths/scan-folders");
 }
 
 // ── Scan ─────────────────────────────────────────────────────────────────────
