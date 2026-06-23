@@ -53,6 +53,8 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   const [activePage, setActivePage] = useState(1);
   const [jobDone, setJobDone] = useState(false);
   const [jobErrored, setJobErrored] = useState(false);
+  // Setting the stream's jobId to null (on Stop) closes the EventSource,
+  // which disconnects the client and cancels the OCR generator server-side.
   const [stopped, setStopped] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -120,8 +122,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     [],
   );
 
-  // Setting the stream's jobId to null (on Stop) closes the EventSource, which
-  // disconnects the client and cancels the OCR generator server-side.
+  // Null jobId closes the EventSource (see stopped state declaration above).
   useJobStream(
     initialLoading || stopped ? null : jobId,
     handleSseEvent,
@@ -138,17 +139,18 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     const existing = saveTimers.current.get(pageIndex);
     if (existing) clearTimeout(existing);
 
+    // Capture the current markdown now so doSave closes over the value at
+    // schedule time, not the potentially-stale `pages` state at fire time.
+    const markdown = pages.find((p) => p.index === pageIndex)?.markdown ?? "";
     const timer = setTimeout(() => {
-      doSave(pageIndex);
+      doSave(pageIndex, markdown);
     }, 800);
     saveTimers.current.set(pageIndex, timer);
   }
 
-  async function doSave(pageIndex: number) {
-    const page = pages.find((p) => p.index === pageIndex);
-    if (!page) return;
+  async function doSave(pageIndex: number, markdown: string) {
     try {
-      await updatePageMarkdown(jobId, pageIndex, page.markdown);
+      await updatePageMarkdown(jobId, pageIndex, markdown);
       setSaveError(null);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed.");

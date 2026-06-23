@@ -11,7 +11,7 @@
  * updateSettings() then re-scans immediately.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createJobFromFile,
   createJobFromScan,
@@ -23,6 +23,7 @@ import {
 } from "../api/client";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Spinner } from "../components/Spinner";
+import { SuggestionChips } from "../components/SuggestionChips";
 
 interface ImportProps {
   onJobCreated: (jobId: string, jobName: string, pageCount: number) => void;
@@ -63,16 +64,12 @@ export function Import({ onJobCreated }: ImportProps) {
     }
   }
 
-  const handleDrop = useCallback(
-    (ev: React.DragEvent<HTMLDivElement>) => {
-      ev.preventDefault();
-      setDragging(false);
-      const file = ev.dataTransfer.files[0];
-      if (file) uploadFile(file);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  function handleDrop(ev: React.DragEvent<HTMLDivElement>) {
+    ev.preventDefault();
+    setDragging(false);
+    const file = ev.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
 
   const handleFileInput = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const file = ev.target.files?.[0];
@@ -155,6 +152,14 @@ export function Import({ onJobCreated }: ImportProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const dropZoneClass = [
+    "relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-8 transition-all duration-200 cursor-pointer select-none min-h-[200px]",
+    dragging
+      ? "border-terracotta-400 bg-terracotta-300/10"
+      : "border-default hover:border-terracotta-400/60 hover:bg-surface-2",
+    uploading ? "pointer-events-none opacity-60" : "",
+  ].join(" ");
+
   return (
     <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto">
       {/* Global upload error */}
@@ -176,13 +181,7 @@ export function Import({ onJobCreated }: ImportProps) {
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
             }}
-            className={[
-              "relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-8 transition-all duration-200 cursor-pointer select-none min-h-[200px]",
-              dragging
-                ? "border-terracotta-400 bg-terracotta-300/10"
-                : "border-default hover:border-terracotta-400/60 hover:bg-surface-2",
-              uploading ? "pointer-events-none opacity-60" : "",
-            ].join(" ")}
+            className={dropZoneClass}
           >
             {uploading ? (
               <Spinner size="lg" label="Uploading…" />
@@ -248,25 +247,11 @@ export function Import({ onJobCreated }: ImportProps) {
 
             {/* Suggestion chips */}
             {folderSuggestions.length > 0 && (
-              <div className="flex flex-wrap gap-1" role="list" aria-label="Suggested scan folders">
-                {folderSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    role="listitem"
-                    className={[
-                      "text-2xs font-mono px-2 py-0.5 rounded-full border transition-colors truncate max-w-full",
-                      scanFolder_ === suggestion
-                        ? "border-terracotta-400/60 bg-terracotta-300/10 text-primary"
-                        : "border-default bg-surface-2 text-muted hover:border-terracotta-400/40 hover:text-primary",
-                    ].join(" ")}
-                    title={suggestion}
-                    onClick={() => applyScanFolder(suggestion)}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              <SuggestionChips
+                suggestions={folderSuggestions}
+                selected={scanFolder_}
+                onSelect={applyScanFolder}
+              />
             )}
           </div>
 

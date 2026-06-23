@@ -109,19 +109,25 @@ export class ApiError extends Error {
   }
 }
 
-// ── Core fetch helper ────────────────────────────────────────────────────────
+// ── Core fetch helpers ────────────────────────────────────────────────────────
 
-async function apiFetch<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+/**
+ * Raw fetch layer shared by all three callers.
+ *
+ * Handles the two error cases every caller would otherwise duplicate:
+ *   1. Network failure (fetch rejects)  → ApiError(0, "Cannot reach …")
+ *   2. Non-2xx HTTP status              → ApiError(status, detail)
+ *
+ * The `url` must be the full path (e.g. `/api/jobs`); no prefix is added here.
+ * The `init` is forwarded verbatim — callers set their own headers.
+ *
+ * Returns the raw Response so each caller can read the body in its own way.
+ */
+async function apiFetchRaw(url: string, init?: RequestInit): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(`/api${path}`, {
-      headers: { "Content-Type": "application/json", ...init?.headers },
-      ...init,
-    });
-  } catch (err) {
+    response = await fetch(url, init);
+  } catch {
     throw new ApiError(0, "Cannot reach the backend — is it running?");
   }
 
@@ -135,6 +141,25 @@ async function apiFetch<T>(
     }
     throw new ApiError(response.status, detail);
   }
+
+  return response;
+}
+
+/**
+ * Typed JSON-returning fetch for standard API calls.
+ *
+ * Prepends `/api` to `path`, injects `Content-Type: application/json` (callers
+ * can override via `init.headers`), and returns the parsed JSON body.
+ * Returns `undefined` for 204 No Content responses.
+ */
+async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const response = await apiFetchRaw(`/api${path}`, {
+    headers: { "Content-Type": "application/json", ...init?.headers },
+    ...init,
+  });
 
   // 204 No Content → return undefined cast
   if (response.status === 204) return undefined as unknown as T;
@@ -204,27 +229,11 @@ export async function setProviderKey(providerId: string, apiKey: string): Promis
  * Throws ApiError on a non-2xx response (e.g. unknown model name).
  */
 export async function pullModel(providerId: string, model: string): Promise<void> {
-  let response: Response;
-  try {
-    response = await fetch(`/api/providers/${providerId}/pull`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model }),
-    });
-  } catch {
-    throw new ApiError(0, "Cannot reach the backend — is it running?");
-  }
-
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try {
-      const body = await response.json();
-      if (typeof body?.detail === "string") detail = body.detail;
-    } catch {
-      // ignore parse errors
-    }
-    throw new ApiError(response.status, detail);
-  }
+  const response = await apiFetchRaw(`/api/providers/${providerId}/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model }),
+  });
 
   // Drain the SSE stream to completion — resolves when pull is done.
   await response.text();
@@ -254,24 +263,8 @@ export async function scanFolder(): Promise<ScanResponse> {
  * form field.
  */
 async function postJobForm(form: FormData): Promise<JobCreated> {
-  let response: Response;
-  try {
-    response = await fetch("/api/jobs", { method: "POST", body: form });
-  } catch {
-    throw new ApiError(0, "Cannot reach the backend — is it running?");
-  }
-
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try {
-      const body = await response.json();
-      if (typeof body?.detail === "string") detail = body.detail;
-    } catch {
-      // ignore parse errors — keep the HTTP status message
-    }
-    throw new ApiError(response.status, detail);
-  }
-
+  // No Content-Type header — fetch must set it with the multipart boundary.
+  const response = await apiFetchRaw("/api/jobs", { method: "POST", body: form });
   return response.json() as Promise<JobCreated>;
 }
 

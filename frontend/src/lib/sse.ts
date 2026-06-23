@@ -65,40 +65,7 @@ export function connectJobStream(jobId: string, handlers: SseHandlers): () => vo
   };
 }
 
-/**
- * React hook that streams OCR events for a job and dispatches them via a
- * reducer-style updater. Call it with null jobId to be a no-op.
- *
- * Usage:
- *   useJobStream(jobId, (event) => {
- *     if (event.type === "page_delta") setMarkdown(i, prev => prev + event.text);
- *   });
- */
-import { useEffect, useRef } from "react";
-
-export function useJobStream(
-  jobId: string | null,
-  onEvent: (event: SseEvent) => void,
-  onClose?: () => void,
-): void {
-  // Stable ref so the effect doesn't re-run when the callback identity changes.
-  const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
-
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    if (!jobId) return;
-
-    const cleanup = connectJobStream(jobId, {
-      onEvent: (ev) => onEventRef.current(ev),
-      onClose: () => onCloseRef.current?.(),
-      onError: () => {
-        // Error is surfaced via onClose; callers can set an error state there.
-      },
-    });
-
-    return cleanup;
-  }, [jobId]);
-}
+// Re-export the React hook so existing importers that do:
+//   import { useJobStream } from "../lib/sse"
+// continue to work without any change.
+export { useJobStream } from "./useJobStream";

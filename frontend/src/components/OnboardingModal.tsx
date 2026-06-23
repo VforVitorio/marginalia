@@ -300,6 +300,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const backdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
   const totalSteps = STEPS.length;
   const isLast = stepIndex === totalSteps - 1;
@@ -375,12 +376,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   // ── Step content transition ──────────────────────────────────────────────
 
   function goToStep(next: number, direction: "forward" | "back") {
-    const card = cardRef.current;
-    if (!card) {
-      setStepIndex(next);
-      return;
-    }
-    const bodyEl = card.querySelector<HTMLElement>(".onboarding-body");
+    const bodyEl = bodyRef.current;
     if (!bodyEl) {
       setStepIndex(next);
       return;
@@ -482,7 +478,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
         </div>
 
         {/* ── Body (animated on step change) ───────────────────────── */}
-        <div className="onboarding-body min-h-[11rem]">{step?.body}</div>
+        <div ref={bodyRef} className="onboarding-body min-h-[11rem]">{step?.body}</div>
 
         {/* ── Footer ───────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-4 pt-1">
