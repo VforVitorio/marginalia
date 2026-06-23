@@ -263,7 +263,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
           <div className="card p-0 overflow-hidden flex flex-col">
             <div className="px-3 py-2 border-b border-default flex items-center gap-2">
               <span className="text-xs font-medium text-muted uppercase tracking-wide">
-                Page {activePage + 1}
+                Page {activePage}
               </span>
               <span className="ml-auto">
                 {active.streaming && <Spinner size="sm" label="OCR streaming…" />}
@@ -276,7 +276,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
               <img
                 key={`${jobId}-${activePage}`}
                 src={pageImageUrl(jobId, activePage)}
-                alt={`Page ${activePage + 1} original`}
+                alt={`Page ${activePage} original`}
                 className="max-w-full max-h-[600px] object-contain rounded-lg shadow-warm"
                 loading="lazy"
               />
@@ -332,7 +332,7 @@ function PageTabs({ pages, activePage, onSelect }: PageTabsProps) {
           key={page.index}
           role="tab"
           aria-selected={page.index === activePage}
-          aria-label={`Page ${page.index + 1}${page.done ? " — done" : page.streaming ? " — streaming" : ""}`}
+          aria-label={`Page ${page.index}${page.done ? " — done" : page.streaming ? " — streaming" : ""}`}
           onClick={() => onSelect(page.index)}
           className={[
             "flex-shrink-0 w-9 h-9 rounded-lg text-xs font-medium transition-all relative",
@@ -341,7 +341,7 @@ function PageTabs({ pages, activePage, onSelect }: PageTabsProps) {
               : "bg-surface-2 text-secondary hover:bg-parchment-200 dark:hover:bg-obsidian-800",
           ].join(" ")}
         >
-          {page.index + 1}
+          {page.index}
           {page.streaming && (
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-terracotta-400 animate-pulse" />
           )}
