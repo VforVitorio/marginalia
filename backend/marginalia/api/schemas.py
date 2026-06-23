@@ -26,7 +26,6 @@ class ProviderOut(BaseModel):
 class ProvidersOut(BaseModel):
     providers: list[ProviderOut]
     active: str | None
-    claude_authenticated: bool
 
 
 class ProviderStatus(BaseModel):
@@ -51,6 +50,10 @@ class SelectProvider(BaseModel):
 
 class PullBody(BaseModel):
     model: str
+
+
+class KeyBody(BaseModel):
+    api_key: str
 
 
 class CreateJobOut(BaseModel):
