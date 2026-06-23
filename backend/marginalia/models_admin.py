@@ -14,17 +14,27 @@ import httpx
 from marginalia.config import ProviderConfig
 
 
-def list_models(provider: ProviderConfig) -> list[str]:
-    """List the models a provider reports at ``/models``. Empty list if it can't be reached."""
+def runtime_status(provider: ProviderConfig) -> tuple[bool, list[str]]:
+    """Return ``(reachable, models)`` for a provider.
+
+    For local runtimes (Ollama / LM Studio) this pings ``/models`` with a short timeout so the UI can
+    tell "runtime down" from "running but no model loaded". For Claude there is no HTTP runtime.
+    """
     if not provider.base_url:  # Claude (Agent SDK) or a misconfigured entry
-        return [provider.default_model] if provider.default_model else []
+        return True, ([provider.default_model] if provider.default_model else [])
     headers = {"Authorization": f"Bearer {provider.api_key}"} if provider.api_key else {}
     try:
-        resp = httpx.get(f"{provider.base_url.rstrip('/')}/models", headers=headers, timeout=10.0)
+        resp = httpx.get(f"{provider.base_url.rstrip('/')}/models", headers=headers, timeout=4.0)
         resp.raise_for_status()
     except httpx.HTTPError:
-        return []
-    return [entry["id"] for entry in resp.json().get("data", []) if "id" in entry]
+        return False, []
+    models = [entry["id"] for entry in resp.json().get("data", []) if "id" in entry]
+    return True, models
+
+
+def list_models(provider: ProviderConfig) -> list[str]:
+    """List the models a provider reports. Empty list if it can't be reached."""
+    return runtime_status(provider)[1]
 
 
 def supports_pull(provider: ProviderConfig) -> bool:
