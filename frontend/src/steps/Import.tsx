@@ -5,13 +5,20 @@
  *
  * On success either way, calls onJobCreated(jobId) so App can advance to Review.
  * Renders safely if the backend is down (shows an error instead of crashing).
+ *
+ * Scan-folder configuration: fetched from settings on mount; editable inline
+ * with path suggestions from getScanFolderSuggestions(). Persisted via
+ * updateSettings() then re-scans immediately.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createJobFromFile,
   createJobFromScan,
+  getSettings,
+  getScanFolderSuggestions,
   scanFolder,
+  updateSettings,
   type ScannedPdf,
 } from "../api/client";
 import { ErrorBanner } from "../components/ErrorBanner";
@@ -29,6 +36,12 @@ export function Import({ onJobCreated }: ImportProps) {
   const [scannedPdfs, setScannedPdfs] = useState<ScannedPdf[] | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+
+  // Scan-folder configuration state.
+  const [scanFolder_, setScanFolder_] = useState("");
+  const [scanFolderDraft, setScanFolderDraft] = useState("");
+  const [folderSuggestions, setFolderSuggestions] = useState<string[]>([]);
+  const [savingFolder, setSavingFolder] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,9 +108,50 @@ export function Import({ onJobCreated }: ImportProps) {
     }
   }
 
+  // ── Scan-folder management ────────────────────────────────────────────────
+
+  /** Persist a new scan-folder path, then re-scan immediately. */
+  async function applyScanFolder(path: string) {
+    const trimmed = path.trim();
+    if (!trimmed || trimmed === scanFolder_) return;
+    setSavingFolder(true);
+    try {
+      await updateSettings({ scan_folder: trimmed });
+      setScanFolder_(trimmed);
+      setScanFolderDraft(trimmed);
+    } catch {
+      // Silently ignore — the user can retry.
+    } finally {
+      setSavingFolder(false);
+    }
+    // Always re-scan so the list reflects the new folder (even on error).
+    handleScan();
+  }
+
+  function handleFolderKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") applyScanFolder(scanFolderDraft);
+  }
+
   // Auto-scan on mount to give a useful default state.
+  // Also load the current scan_folder from settings and fetch suggestions.
   useEffect(() => {
     handleScan();
+
+    async function bootstrap() {
+      try {
+        const [settings, suggestions] = await Promise.all([
+          getSettings(),
+          getScanFolderSuggestions(),
+        ]);
+        setScanFolder_(settings.scan_folder ?? "");
+        setScanFolderDraft(settings.scan_folder ?? "");
+        setFolderSuggestions(suggestions);
+      } catch {
+        // Non-fatal — suggestions and current folder remain empty.
+      }
+    }
+
+    bootstrap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -167,6 +221,55 @@ export function Import({ onJobCreated }: ImportProps) {
             </button>
           </div>
 
+          {/* Scan-folder path input */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex gap-1.5">
+              <input
+                className="input font-mono text-xs flex-1 min-w-0"
+                type="text"
+                placeholder="e.g. /Users/you/Kindle Scribe"
+                value={scanFolderDraft}
+                onChange={(e) => setScanFolderDraft(e.target.value)}
+                onKeyDown={handleFolderKeyDown}
+                spellCheck={false}
+                autoComplete="off"
+                aria-label="Scan folder path"
+              />
+              <button
+                type="button"
+                className="btn-ghost text-xs px-2.5 py-1 shrink-0"
+                disabled={savingFolder || scanFolderDraft.trim() === scanFolder_}
+                onClick={() => applyScanFolder(scanFolderDraft)}
+                aria-label="Apply folder and rescan"
+              >
+                {savingFolder ? "…" : "Apply"}
+              </button>
+            </div>
+
+            {/* Suggestion chips */}
+            {folderSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-1" role="list" aria-label="Suggested scan folders">
+                {folderSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    role="listitem"
+                    className={[
+                      "text-2xs font-mono px-2 py-0.5 rounded-full border transition-colors truncate max-w-full",
+                      scanFolder_ === suggestion
+                        ? "border-terracotta-400/60 bg-terracotta-300/10 text-primary"
+                        : "border-default bg-surface-2 text-muted hover:border-terracotta-400/40 hover:text-primary",
+                    ].join(" ")}
+                    title={suggestion}
+                    onClick={() => applyScanFolder(suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="card min-h-[200px] flex flex-col gap-1 overflow-y-auto max-h-72">
             {scanError && (
               <div className="text-xs text-muted italic p-2">
@@ -184,8 +287,7 @@ export function Import({ onJobCreated }: ImportProps) {
               <>
                 {scannedPdfs.length === 0 ? (
                   <p className="text-xs text-muted italic p-2">
-                    No PDFs found in the configured folder.
-                    Configure the folder in settings.
+                    No PDFs found. Check the folder path above or sync your Scribe.
                   </p>
                 ) : (
                   <ul className="flex flex-col gap-0.5">
