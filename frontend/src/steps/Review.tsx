@@ -21,6 +21,7 @@ import {
 } from "../api/client";
 import { useJobStream, type SseEvent } from "../lib/sse";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { MarkdownEditor } from "../components/MarkdownEditor";
 import { Spinner } from "../components/Spinner";
 
 interface ReviewProps {
@@ -286,17 +287,15 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
                 <span className="text-2xs text-muted ml-auto italic">Saving…</span>
               )}
             </div>
-            <textarea
-              aria-label={`Transcript for page ${activePage + 1}`}
-              className="flex-1 resize-none bg-transparent font-mono text-sm text-primary p-3 outline-none leading-relaxed min-h-[400px]"
+            <MarkdownEditor
               value={active.markdown}
-              onChange={(e) => handleMarkdownChange(activePage, e.target.value)}
-              spellCheck={false}
+              onChange={(v) => handleMarkdownChange(activePage, v)}
+              streaming={active.streaming}
               placeholder={
                 active.streaming
                   ? "Transcribing…"
                   : active.done
-                  ? "Empty page — type to add notes."
+                  ? "Empty page — click to add notes."
                   : "Waiting for OCR…"
               }
             />
