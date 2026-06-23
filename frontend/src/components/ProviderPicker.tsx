@@ -11,7 +11,7 @@
  * loadable-model list on demand.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getLoadableModels,
   loadModel,
@@ -99,16 +99,17 @@ interface ProviderRowProps {
 function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowProps) {
   const [expanded, setExpanded] = useState<null | "models" | "load" | "key" | "pull">(null);
 
-  const selectable = provider.state === "ready" || provider.state === "unknown";
   const isOllama = provider.id === "ollama";
   const canLoad = !isOllama && (provider.state === "unreachable" || provider.state === "no_model");
   const canPull = isOllama && (provider.state === "no_model" || provider.state === "ready");
   const canEnterKey = provider.state === "needs_key";
 
+  // Any provider is selectable — picking it makes it active; the dot + Load/Pull/Add-key
+  // actions tell the user what's still needed before OCR will work.
   async function handleRowClick() {
     if (provider.models.length > 1) {
       setExpanded((e) => (e === "models" ? null : "models"));
-    } else if (selectable) {
+    } else {
       await onSelect(provider.models[0] ?? provider.current_model ?? undefined);
     }
   }
@@ -119,9 +120,8 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
         <span className={`status-dot ${dotClass(provider.state)} flex-shrink-0`} />
         <ProviderKindIcon kind={provider.kind} />
         <button
-          className="flex-1 min-w-0 text-left disabled:cursor-default"
+          className="flex-1 min-w-0 text-left"
           onClick={handleRowClick}
-          disabled={!selectable && provider.models.length <= 1}
         >
           <div className="text-sm font-medium text-primary truncate flex items-center gap-1.5">
             {provider.display_name}
@@ -205,12 +205,12 @@ function LoadPanel({ providerId, onLoaded }: { providerId: string; onLoaded: (mo
   const [loadingModel, setLoadingModel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch the loadable list once, lazily.
-  if (models === null && !error) {
+  // Fetch the loadable list on mount. A 503 carries the backend's "open LM Studio" message.
+  useEffect(() => {
     getLoadableModels(providerId)
       .then(setModels)
-      .catch(() => setError("Couldn't list downloaded models. Is LM Studio's `lms` CLI installed?"));
-  }
+      .catch((err) => setError(err instanceof Error ? err.message : "Couldn't list downloaded models."));
+  }, [providerId]);
 
   async function handleLoad(model: string) {
     setLoadingModel(model);
