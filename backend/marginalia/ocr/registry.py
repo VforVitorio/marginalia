@@ -7,7 +7,7 @@ case here, without touching the orchestrator or the UI.
 
 from __future__ import annotations
 
-from marginalia.config import ProviderConfig, Settings, load_providers, load_settings
+from marginalia.config import ProviderConfig, Settings, load_settings, resolve_providers
 from marginalia.ocr.agent_sdk import AgentSDKEngine
 from marginalia.ocr.engine import EngineKind, OCREngine
 from marginalia.ocr.openai_compat import OpenAICompatEngine
@@ -42,7 +42,7 @@ def active_engine(
 ) -> OCREngine:
     """Resolve the active engine from ``settings.json`` + ``providers.toml``."""
     settings = settings or load_settings()
-    providers = providers if providers is not None else load_providers()
+    providers = providers if providers is not None else resolve_providers(settings)
     if not providers:
         raise ValueError("No providers configured (is providers.toml missing?).")
     chosen = _pick_provider(settings.active_provider, providers)
