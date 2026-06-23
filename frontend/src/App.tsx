@@ -46,6 +46,11 @@ interface ActiveJob {
   pageCount: number;
 }
 
+/** True when the user has asked the OS to minimise motion (WCAG 2.3.3). */
+function prefersReducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -86,8 +91,12 @@ export default function App() {
 
   function transitionToStep(nextStep: Step) {
     const el = stepContainerRef.current;
-    if (!el) {
+
+    // No container or reduced motion → swap instantly. Still move focus into the
+    // new step so keyboard / screen-reader users follow the change (WCAG 2.4.3).
+    if (!el || prefersReducedMotion()) {
       setStep(nextStep);
+      el?.focus({ preventScroll: true });
       return;
     }
 
@@ -99,6 +108,8 @@ export default function App() {
       ease: "power2.in",
       onComplete: () => {
         setStep(nextStep);
+        // Move focus into the new step (keyboard / SR users follow the change).
+        el.focus({ preventScroll: true });
         // Enter next step.
         gsap.fromTo(
           el,
@@ -230,7 +241,8 @@ export default function App() {
 
         {/* ── Main content ─────────────────────────────────────────────── */}
         <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
-          <div ref={stepContainerRef}>
+          <div ref={stepContainerRef} tabIndex={-1} className="outline-none">
+
             {step === "import" && (
               <Import onJobCreated={handleJobCreated} />
             )}
