@@ -40,15 +40,17 @@ interface LocalPage {
 }
 
 export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewProps) {
+  // Page indices are 1-based to match the backend (ingest enumerates from 1).
   const [pages, setPages] = useState<LocalPage[]>(() =>
     Array.from({ length: pageCount }, (_, i) => ({
-      index: i,
+      index: i + 1,
       markdown: "",
       done: false,
       streaming: false,
     })),
   );
-  const [activePage, setActivePage] = useState(0);
+  // activePage is the 1-based page index (not an array position) — look pages up by .index.
+  const [activePage, setActivePage] = useState(1);
   const [jobDone, setJobDone] = useState(false);
   const [jobErrored, setJobErrored] = useState(false);
   const [stopped, setStopped] = useState(false);
@@ -86,12 +88,14 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   const handleSseEvent = useCallback(
     (event: SseEvent) => {
       if (event.type === "page_started") {
+        // Mark the page streaming, but do NOT move the user's view — auto-jumping
+        // pages mid-OCR (or while they're editing) is disorienting. They navigate
+        // via the tab bar; the dots there show which pages are done.
         setPages((prev) =>
           prev.map((p) =>
             p.index === event.index ? { ...p, streaming: true } : p,
           ),
         );
-        setActivePage(event.index);
       } else if (event.type === "page_delta") {
         setPages((prev) =>
           prev.map((p) =>
@@ -141,14 +145,16 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   }
 
   async function doSave(pageIndex: number) {
-    const page = pages[pageIndex];
+    const page = pages.find((p) => p.index === pageIndex);
     if (!page) return;
     try {
       await updatePageMarkdown(jobId, pageIndex, page.markdown);
-      pendingSave.current.delete(pageIndex);
       setSaveError(null);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      // Always clear the pending flag so the "Saving…" indicator never sticks.
+      pendingSave.current.delete(pageIndex);
     }
   }
 
@@ -168,7 +174,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
 
   // ── Rendering ────────────────────────────────────────────────────────────
 
-  const active = pages[activePage];
+  const active = pages.find((p) => p.index === activePage);
 
   const doneCount = pages.filter((p) => p.done).length;
   const progress = pageCount > 0 ? doneCount / pageCount : 0;
