@@ -25,3 +25,12 @@ it here and move on. None of this is built without being asked for explicitly.
 - Custom export templates.
 - Full-text search across exports.
 - Scheduled pull from Google Drive.
+- **Ingest Kindle `myClippings.txt`** (highlights/clippings → Markdown). Far future — Kindle makes
+  getting the file out a pain; only worth it if the demand shows up.
+- **Position against / complement the Scribe's native "Convert to text"** (2026 firmware 5.18.x+,
+  regular Scribe + Colorsoft). The native feature emails a flat `.txt`; marginalia's edge is
+  Obsidian folder-mirroring + wikilinks + Markdown (KaTeX/tables/callouts) + a human review loop,
+  fully local. Possible feature: a fast path that ingests the Scribe's *own* converted text when present.
+- **Non-dev packaging / one-click launch.** Current launch is dev-shaped (FastAPI + Vite). Before a broad
+  push to the Obsidian / Kindle Scribe communities (non-developers), ship a packaged installer or a
+  single-command/single-binary start. Biggest adoption barrier for the non-dev audience.
