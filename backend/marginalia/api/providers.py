@@ -1,11 +1,14 @@
-"""Settings, provider selection, and model-admin endpoints (thin: delegate to services)."""
+"""Settings, provider selection, status, and model-admin endpoints (thin: delegate to services)."""
 
 from __future__ import annotations
+
+import asyncio
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from marginalia.api.schemas import (
+    KeyBody,
     ProviderOut,
     ProvidersOut,
     ProvidersStatusOut,
@@ -15,8 +18,22 @@ from marginalia.api.schemas import (
     SettingsUpdate,
 )
 from marginalia.api.sse import sse_stream
-from marginalia.config import ProviderConfig, Settings, load_providers, load_settings, save_settings
-from marginalia.models_admin import list_models, pull_model, runtime_status, supports_pull
+from marginalia.config import (
+    ProviderConfig,
+    Settings,
+    load_settings,
+    resolve_providers,
+    save_settings,
+)
+from marginalia.models_admin import (
+    ensure_loaded,
+    list_models,
+    loadable_models,
+    pull_model,
+    runtime_status,
+    supports_load,
+    supports_pull,
+)
 
 router = APIRouter()
 
@@ -46,20 +63,18 @@ def list_provider_catalogue() -> ProvidersOut:
             current_model=_current_model(provider, settings),
             models=[],  # fetched on demand via /providers/{id}/models — keeps this endpoint non-blocking
         )
-        for provider in load_providers()
+        for provider in resolve_providers(settings)
     ]
-    return ProvidersOut(
-        providers=providers,
-        active=settings.active_provider,
-        claude_authenticated=_claude_authenticated(),
-    )
+    return ProvidersOut(providers=providers, active=settings.active_provider)
 
 
 @router.get("/providers/status")
 def providers_status() -> ProvidersStatusOut:
     """Live per-provider status: runtime reachable? which models loaded? what's the next step?"""
     settings = load_settings()
-    return ProvidersStatusOut(providers=[_provider_status(provider, settings) for provider in load_providers()])
+    return ProvidersStatusOut(
+        providers=[_provider_status(provider, settings) for provider in resolve_providers(settings)]
+    )
 
 
 def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderStatus:
@@ -78,8 +93,10 @@ def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderSt
         )
 
     if provider.id == "claude":
+        # ponytail: no cheap offline auth check exists — report honestly as "unknown" rather than a
+        # fake "authenticated"; a real failure surfaces as an OCR `error` event. Active cached probe = #11.
         models = [current] if current else []
-        return status(True, models, "unknown", "Uses your Claude Code subscription login (run `claude login`).")
+        return status(True, models, "unknown", "Uses your Claude Code subscription (run `claude login`).")
     if provider.kind == "cloud":
         configured = bool(provider.api_key) and "PUT_YOUR" not in (provider.api_key or "")
         if not configured:
@@ -105,15 +122,49 @@ def select_provider(body: SelectProvider) -> Settings:
 
 @router.get("/providers/{provider_id}/models")
 def provider_models(provider_id: str) -> list[str]:
-    return list_models(_provider_or_404(provider_id))
+    return list_models(_provider_or_404(provider_id, load_settings()))
+
+
+@router.get("/providers/{provider_id}/loadable")
+def loadable(provider_id: str) -> list[str]:
+    """Downloaded models the app can load headless (LM Studio); empty for other providers."""
+    return loadable_models(_provider_or_404(provider_id, load_settings()))
 
 
 @router.post("/providers/{provider_id}/pull")
 async def pull(provider_id: str, body: PullBody) -> StreamingResponse:
-    provider = _provider_or_404(provider_id)
+    provider = _provider_or_404(provider_id, load_settings())
     if not supports_pull(provider):
         raise HTTPException(status_code=501, detail="This provider does not support pulling models.")
     return StreamingResponse(sse_stream(pull_model(provider, body.model)), media_type="text/event-stream")
+
+
+@router.post("/providers/{provider_id}/load")
+async def load(provider_id: str, body: PullBody) -> ProviderStatus:
+    """Load a model into a local runtime that supports headless loading (LM Studio, issue #44)."""
+    settings = load_settings()
+    provider = _provider_or_404(provider_id, settings)
+    if not supports_load(provider):
+        raise HTTPException(status_code=501, detail="This provider cannot load models from the app.")
+    loaded = await asyncio.to_thread(ensure_loaded, provider, body.model)
+    if not loaded:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not load '{body.model}'. Is LM Studio's `lms` CLI installed (`lmstudio install-cli`)?",
+        )
+    return _provider_status(provider, settings)
+
+
+@router.post("/providers/{provider_id}/key")
+def set_key(provider_id: str, body: KeyBody) -> ProviderStatus:
+    """Save a cloud API key entered in the UI (overlaid via settings.json, never written to providers.toml)."""
+    settings = load_settings()
+    provider = _provider_or_404(provider_id, settings)
+    if provider.kind != "cloud" or provider.id == "claude":
+        raise HTTPException(status_code=400, detail="This provider does not take an API key.")
+    settings.api_keys[provider_id] = body.api_key.strip()
+    save_settings(settings)
+    return _provider_status(_provider_or_404(provider_id, settings), settings)
 
 
 def _current_model(provider: ProviderConfig, settings: Settings) -> str | None:
@@ -122,14 +173,9 @@ def _current_model(provider: ProviderConfig, settings: Settings) -> str | None:
     return provider.default_model
 
 
-def _provider_or_404(provider_id: str) -> ProviderConfig:
-    provider = next((entry for entry in load_providers() if entry.id == provider_id), None)
+def _provider_or_404(provider_id: str, settings: Settings) -> ProviderConfig:
+    """Resolve a provider with its UI-entered key overlaid (404 if the id is unknown)."""
+    provider = next((entry for entry in resolve_providers(settings) if entry.id == provider_id), None)
     if provider is None:
         raise HTTPException(status_code=404, detail="Unknown provider.")
     return provider
-
-
-def _claude_authenticated() -> bool:
-    # ponytail: optimistic — a real probe (a cheap auth check) is backlog; an actual auth failure
-    # surfaces as an `error` SSE event during OCR (see docs/ARCHITECTURE.md §11, risk 1).
-    return True
