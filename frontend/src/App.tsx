@@ -12,10 +12,10 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
 import {
-  getProviders,
+  getProvidersStatus,
   getSettings,
   selectProvider,
-  type ProvidersResponse,
+  type ProviderStatus,
   type Settings,
 } from "./api/client";
 
@@ -52,7 +52,7 @@ export default function App() {
   const [step, setStep] = useState<Step>("import");
   const [activeJob, setActiveJob] = useState<ActiveJob | null>(null);
 
-  const [providers, setProviders] = useState<ProvidersResponse | null>(null);
+  const [status, setStatus] = useState<ProviderStatus[] | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [providersLoading, setProvidersLoading] = useState(true);
 
@@ -75,8 +75,8 @@ export default function App() {
     }
 
     // Non-blocking — render the Import step even if backend is down.
-    Promise.allSettled([getProviders(), getSettings()]).then(([prov, sett]) => {
-      if (prov.status === "fulfilled") setProviders(prov.value);
+    Promise.allSettled([getProvidersStatus(), getSettings()]).then(([prov, sett]) => {
+      if (prov.status === "fulfilled") setStatus(prov.value.providers);
       if (sett.status === "fulfilled") setSettings(sett.value);
       setProvidersLoading(false);
     });
@@ -147,12 +147,19 @@ export default function App() {
     setShowOnboarding(false);
   }
 
+  async function refreshProviders() {
+    try {
+      const fresh = await getProvidersStatus();
+      setStatus(fresh.providers);
+    } catch {
+      // Backend unreachable — keep the last known status.
+    }
+  }
+
   async function handleProviderSelect(providerId: string, model?: string) {
     const updated = await selectProvider({ provider_id: providerId, model });
     setSettings(updated);
-    // Refresh providers list to reflect new active.
-    const fresh = await getProviders();
-    setProviders(fresh);
+    await refreshProviders();
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -188,9 +195,11 @@ export default function App() {
             {/* Controls */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <ProviderPicker
-                providers={providers}
+                status={status}
+                active={settings?.active_provider ?? null}
                 loading={providersLoading}
                 onSelect={handleProviderSelect}
+                onRefresh={refreshProviders}
               />
               <ThemeToggle />
             </div>

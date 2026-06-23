@@ -93,6 +93,46 @@ def test_providers_status_reports_state(tmp_path, monkeypatch) -> None:
     assert by_id["claude"]["state"] == "unknown"
 
 
+def test_set_cloud_key_makes_gemini_ready(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "providers.toml").write_text(
+        '[[providers]]\nid="gemini"\ndisplay_name="Gemini"\nkind="cloud"\nbase_url="https://x/v1"\n',
+        encoding="utf-8",
+    )
+    client = TestClient(app)
+    assert client.get("/api/providers/status").json()["providers"][0]["state"] == "needs_key"
+    saved = client.post("/api/providers/gemini/key", json={"api_key": "a-real-key"}).json()
+    assert saved["state"] == "ready"  # key entered in the UI flips it to ready
+    # persisted across requests (settings.json overlay)
+    assert client.get("/api/providers/status").json()["providers"][0]["state"] == "ready"
+
+
+def test_set_key_rejected_for_claude(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "providers.toml").write_text(
+        '[[providers]]\nid="claude"\ndisplay_name="Claude"\nkind="cloud"\n', encoding="utf-8"
+    )
+    client = TestClient(app)
+    assert client.post("/api/providers/claude/key", json={"api_key": "x"}).status_code == 400
+
+
+def test_load_on_unsupported_provider_is_501(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "providers.toml").write_text(
+        '[[providers]]\nid="ollama"\ndisplay_name="Ollama"\nkind="local"\nbase_url="http://127.0.0.1:1"\n',
+        encoding="utf-8",
+    )
+    client = TestClient(app)
+    assert client.post("/api/providers/ollama/load", json={"model": "x"}).status_code == 501
+
+
+def test_path_suggestion_endpoints_return_lists(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    client = TestClient(app)
+    assert isinstance(client.get("/api/paths/vaults").json(), list)
+    assert isinstance(client.get("/api/paths/scan-folders").json(), list)
+
+
 def test_non_pdf_upload_is_400(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     client = TestClient(app)
