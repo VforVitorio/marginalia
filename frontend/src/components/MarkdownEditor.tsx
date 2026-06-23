@@ -78,29 +78,45 @@ export function MarkdownEditor({
     );
   }
 
-  // Preview mode.
+  // Preview mode. The container is NOT a button: rendered Markdown contains its
+  // own links, and a button wrapping interactive content is invalid. Editing is
+  // reached via the explicit Edit button (keyboard/AT) or a click on empty area
+  // (mouse convenience — link clicks are let through).
   return (
-    <div
-      role="button"
-      tabIndex={streaming ? -1 : 0}
-      aria-label={streaming ? "Transcript preview (streaming)" : "Transcript preview — click to edit"}
-      className={[
-        "flex-1 p-3 min-h-[400px] overflow-y-auto outline-none",
-        streaming ? "cursor-default" : "cursor-text focus-visible:ring-1 focus-visible:ring-accent/40",
-      ].join(" ")}
-      onClick={enterEdit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          enterEdit();
-        }
-      }}
-    >
-      {value.trim() === "" ? (
-        <PlaceholderText text={placeholder} />
-      ) : (
-        <MarkdownBody markdown={value} />
+    <div className="group relative flex-1 flex flex-col min-h-[400px]">
+      {!streaming && (
+        <button
+          type="button"
+          aria-label="Edit transcript"
+          title="Edit"
+          className="absolute top-2 right-2 z-10 btn-ghost text-2xs px-2 py-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+          onClick={enterEdit}
+        >
+          Edit
+        </button>
       )}
+      <div
+        className={[
+          "flex-1 overflow-y-auto p-3",
+          streaming ? "cursor-default" : "cursor-text",
+        ].join(" ")}
+        onClick={
+          streaming
+            ? undefined
+            : (e) => {
+                // Click-to-edit for mouse users; let clicks on links work normally.
+                if (!(e.target as HTMLElement).closest("a")) enterEdit();
+              }
+        }
+      >
+        {value.trim() === "" ? (
+          <PlaceholderText text={placeholder} />
+        ) : streaming ? (
+          <StreamingText text={value} />
+        ) : (
+          <MarkdownBody markdown={value} />
+        )}
+      </div>
     </div>
   );
 }
@@ -110,6 +126,21 @@ export function MarkdownEditor({
 function PlaceholderText({ text }: { text: string }) {
   return (
     <p className="text-sm text-muted italic select-none">{text}</p>
+  );
+}
+
+/**
+ * StreamingText — raw text shown while OCR is still writing the page.
+ *
+ * ponytail: rendering raw text during streaming skips re-running the full
+ * remark → rehype → KaTeX pipeline on every token (the page's biggest render
+ * cost). The formatted Markdown renders once, when the page finishes.
+ */
+function StreamingText({ text }: { text: string }) {
+  return (
+    <pre className="m-0 font-mono text-sm text-primary leading-relaxed whitespace-pre-wrap break-words">
+      {text}
+    </pre>
   );
 }
 
