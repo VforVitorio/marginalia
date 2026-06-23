@@ -1,0 +1,22 @@
+# OSV-Scanner ignore list. Each entry must name a real, justified reason — revisit during the
+# dependency / Vite-major bump (milestone "Packaging & distribution" / the deps pass).
+#
+# All four below are **dev-only** advisories in esbuild / Vite (the frontend dev server and build
+# toolchain). They do not ship in the production bundle (FastAPI serves the static `frontend/dist`),
+# and the dev server is bound to localhost. The fixes require a Vite 5 -> 6 major bump, deferred.
+
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"  # esbuild dev-server can be reached cross-origin
+reason = "Dev-only (esbuild via Vite). Dev server is localhost-only; not in the shipped build. Fix via Vite major bump."
+
+[[IgnoredVulns]]
+id = "GHSA-4w7w-66w2-5vf9"  # vite dev-server
+reason = "Dev-only (Vite). Not in the shipped build. Fix via Vite major bump."
+
+[[IgnoredVulns]]
+id = "GHSA-fx2h-pf6j-xcff"  # vite dev-server
+reason = "Dev-only (Vite). Not in the shipped build. Fix via Vite major bump."
+
+[[IgnoredVulns]]
+id = "GHSA-v6wh-96g9-6wx3"  # vite dev-server
+reason = "Dev-only (Vite). Not in the shipped build. Fix via Vite major bump."

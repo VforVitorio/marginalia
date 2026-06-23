@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
+import pytest
+
 from marginalia.ingest.pdf import Notebook, Page
 from marginalia.jobs.service import run_ocr
 from marginalia.jobs.store import JobStore
@@ -38,6 +40,16 @@ def test_store_create_and_load(tmp_path) -> None:
     loaded = store.load(record.job_id)
     assert loaded.name == "nb"
     assert loaded.pages[0].markdown == ""
+
+
+def test_store_rejects_path_traversal_job_id(tmp_path) -> None:
+    # job_id comes from the URL and builds a filesystem path — only uuid hex is allowed.
+    store = JobStore(root=tmp_path)
+    for bad in ("../../etc", "..", "a/b", "nothex"):
+        with pytest.raises(ValueError):
+            store.load(bad)
+        with pytest.raises(ValueError):
+            store.page_image_path(bad, 1)
 
 
 def test_save_page_markdown(tmp_path) -> None:
