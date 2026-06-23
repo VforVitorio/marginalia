@@ -353,7 +353,7 @@ const PageTabs = memo(
           aria-label={`Page ${page.index}${page.done ? " — done" : page.streaming ? " — streaming" : ""}`}
           onClick={() => onSelect(page.index)}
           className={[
-            "flex-shrink-0 w-9 h-9 rounded-lg text-xs font-medium transition-all relative",
+            "flex-shrink-0 w-10 h-10 rounded-lg text-xs font-medium transition-colors relative",
             page.index === activePage
               ? "bg-terracotta-500 dark:bg-terracotta-400 text-parchment-50 shadow-warm"
               : "bg-surface-2 text-secondary hover:bg-parchment-200 dark:hover:bg-obsidian-800",
