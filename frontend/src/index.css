@@ -18,6 +18,7 @@
     --color-accent-light: #d4937a;  /* terracotta-300 */
     --color-success: #5a8a6a;
     --color-error: #a04040;
+    --color-warn: #c8943a;
   }
 
   .dark {
@@ -32,6 +33,7 @@
     --color-accent-light: #d4937a;  /* terracotta-300 */
     --color-success: #7aaa8a;
     --color-error: #c07070;
+    --color-warn: #d8a955;
   }
 
   html {
@@ -63,6 +65,20 @@
   }
 }
 
+/* ── Reduced motion ────────────────────────────────────────── */
+/* Honour the OS "minimise motion" setting (WCAG 2.3.3). Neutralises CSS
+   animations/transitions globally; JS/GSAP guards live in the components. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Utility classes ───────────────────────────────────────── */
 
 @layer utilities {
@@ -82,7 +98,7 @@
 @layer components {
   /* Buttons */
   .btn {
-    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none;
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none;
   }
 
   .btn-primary {
@@ -148,7 +164,7 @@
   }
   .status-dot-ok { background-color: var(--color-success); }
   .status-dot-err { background-color: var(--color-error); }
-  .status-dot-warn { background-color: #c8943a; }
+  .status-dot-warn { background-color: var(--color-warn); }
 
   /* Shimmer loading */
   .shimmer {
