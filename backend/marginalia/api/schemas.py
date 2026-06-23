@@ -29,6 +29,21 @@ class ProvidersOut(BaseModel):
     claude_authenticated: bool
 
 
+class ProviderStatus(BaseModel):
+    id: str
+    display_name: str
+    kind: str
+    reachable: bool
+    models: list[str]
+    current_model: str | None
+    state: str  # ready | no_model | unreachable | needs_key | unknown
+    hint: str
+
+
+class ProvidersStatusOut(BaseModel):
+    providers: list[ProviderStatus]
+
+
 class SelectProvider(BaseModel):
     provider_id: str
     model: str | None = None
