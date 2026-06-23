@@ -4,10 +4,14 @@
  * Reads vault_path and strategies from settings (already loaded by App).
  * Allows overriding vault_path for this export without persisting it.
  * On success shows the written-files summary.
+ *
+ * Vault-path suggestions: fetched from the backend on mount and on the
+ * "Detect" button click. Rendered as clickable chips; clicking fills the
+ * input. If none are found the chip row is hidden.
  */
 
-import { useState } from "react";
-import { exportJob, type ExportResult, type Settings } from "../api/client";
+import { useEffect, useState } from "react";
+import { exportJob, getVaultSuggestions, type ExportResult, type Settings } from "../api/client";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Spinner } from "../components/Spinner";
 
@@ -28,6 +32,26 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
   const [exporting, setExporting] = useState(false);
   const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vaultSuggestions, setVaultSuggestions] = useState<string[]>([]);
+  const [detectingVaults, setDetectingVaults] = useState(false);
+
+  async function detectVaults() {
+    setDetectingVaults(true);
+    try {
+      const suggestions = await getVaultSuggestions();
+      setVaultSuggestions(suggestions);
+    } catch {
+      // Silently ignore — suggestions are best-effort.
+    } finally {
+      setDetectingVaults(false);
+    }
+  }
+
+  // Detect vaults on mount so chips are ready immediately.
+  useEffect(() => {
+    detectVaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleStrategy(name: string) {
     // mirror is always on; other strategies are toggleable.
@@ -136,9 +160,47 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
           spellCheck={false}
           autoComplete="off"
         />
-        <p className="text-2xs text-muted">
-          The absolute path to your Obsidian vault folder.
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-2xs text-muted">
+            The absolute path to your Obsidian vault folder.
+          </p>
+          <button
+            type="button"
+            className="btn-ghost text-2xs py-0.5 px-2 gap-1 shrink-0"
+            onClick={detectVaults}
+            disabled={detectingVaults}
+            aria-label="Detect Obsidian vaults"
+          >
+            {detectingVaults ? (
+              <span className="opacity-60">Detecting…</span>
+            ) : (
+              "Detect"
+            )}
+          </button>
+        </div>
+
+        {/* Suggestion chips — only shown when suggestions exist */}
+        {vaultSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5" role="list" aria-label="Detected vaults">
+            {vaultSuggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                role="listitem"
+                className={[
+                  "text-2xs font-mono px-2 py-0.5 rounded-full border transition-colors truncate max-w-full",
+                  vaultPath === suggestion
+                    ? "border-terracotta-400/60 bg-terracotta-300/10 text-primary"
+                    : "border-default bg-surface-2 text-muted hover:border-terracotta-400/40 hover:text-primary",
+                ].join(" ")}
+                title={suggestion}
+                onClick={() => setVaultPath(suggestion)}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Target subfolder (for loose imports) */}

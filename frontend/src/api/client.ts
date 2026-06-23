@@ -194,6 +194,42 @@ export async function setProviderKey(providerId: string, apiKey: string): Promis
   });
 }
 
+/**
+ * Pull a model via Ollama's streaming pull endpoint.
+ *
+ * The backend streams SSE progress lines; this function drains the body to
+ * completion and resolves when the pull finishes. No per-chunk parsing —
+ * the caller is notified only on success or failure.
+ *
+ * Throws ApiError on a non-2xx response (e.g. unknown model name).
+ */
+export async function pullModel(providerId: string, model: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/providers/${providerId}/pull`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    });
+  } catch {
+    throw new ApiError(0, "Cannot reach the backend — is it running?");
+  }
+
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try {
+      const body = await response.json();
+      if (typeof body?.detail === "string") detail = body.detail;
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  // Drain the SSE stream to completion — resolves when pull is done.
+  await response.text();
+}
+
 // ── Path suggestions (settings / onboarding inputs) ────────────────────────────
 
 export async function getVaultSuggestions(): Promise<string[]> {
