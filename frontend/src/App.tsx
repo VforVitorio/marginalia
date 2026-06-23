@@ -201,6 +201,28 @@ export default function App() {
                 onSelect={handleProviderSelect}
                 onRefresh={refreshProviders}
               />
+
+              {/* Guide button — reopens the onboarding modal at any time */}
+              <button
+                type="button"
+                aria-label="Open guide"
+                title="Guide"
+                className="btn-secondary flex items-center gap-1.5 text-xs px-2.5 py-1.5"
+                onClick={() => setShowOnboarding(true)}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
+                  <path
+                    d="M6.5 6a1.5 1.5 0 1 1 2.5 1.13C8.5 7.5 8 7.9 8 8.5V9"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="8" cy="11" r="0.65" fill="currentColor" />
+                </svg>
+                <span>Guide</span>
+              </button>
+
               <ThemeToggle />
             </div>
           </div>
