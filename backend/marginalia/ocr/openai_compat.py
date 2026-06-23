@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 from collections.abc import AsyncIterator
 
 import httpx
 
 from marginalia.ocr.engine import EngineInfo, EngineKind
-from marginalia.ocr.prompts import system_prompt
+from marginalia.ocr.prompts import SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAICompatEngine:
@@ -69,12 +72,13 @@ class OpenAICompatEngine:
         return {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
 
     def _build_payload(self, image_png: bytes, prompt: str) -> dict:
-        data_url = "data:image/png;base64," + base64.b64encode(image_png).decode("ascii")
+        b64 = base64.b64encode(image_png).decode("ascii")
+        data_url = f"data:image/png;base64,{b64}"
         return {
             "model": self._model,
             "stream": True,
             "messages": [
-                {"role": "system", "content": system_prompt()},
+                {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
                     "content": [
@@ -100,6 +104,7 @@ def parse_sse_delta(line: str) -> str | None:
     try:
         payload = json.loads(data)
     except json.JSONDecodeError:
+        logger.debug("Unparseable SSE line: %r", line)
         return None
     choices = payload.get("choices") or []
     if not choices:

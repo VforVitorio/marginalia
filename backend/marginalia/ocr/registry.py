@@ -51,7 +51,5 @@ def active_engine(
 
 def _pick_provider(active_id: str | None, providers: list[ProviderConfig]) -> ProviderConfig:
     if active_id:
-        for provider in providers:
-            if provider.id == active_id:
-                return provider
+        return next((p for p in providers if p.id == active_id), providers[0])
     return providers[0]  # ponytail: with no user selection, the first in the catalogue

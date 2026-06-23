@@ -37,6 +37,7 @@ _LIST_TIMEOUT = 30  # `lms ls/ps` can be slow while the service "wakes up" from 
 _SERVER_START_TIMEOUT = 30
 _LOAD_TIMEOUT = 120
 _PROBE_TIMEOUT = 0.5
+_POLL_INTERVAL = 0.5
 
 
 def lms_available() -> bool:
@@ -125,12 +126,11 @@ def downloaded_model_ids() -> list[str]:
 
 def _wait_until_up(host: str, port: int, deadline: float) -> bool:
     """Poll the socket until reachable or *deadline* seconds elapse."""
-    waited = 0.0
-    while waited < deadline:
+    end = time.monotonic() + deadline
+    while time.monotonic() < end:
         if is_server_up(host, port):
             return True
-        time.sleep(0.5)
-        waited += 0.5
+        time.sleep(_POLL_INTERVAL)
     return is_server_up(host, port)
 
 

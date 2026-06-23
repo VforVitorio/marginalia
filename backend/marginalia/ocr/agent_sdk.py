@@ -19,7 +19,7 @@ from pathlib import Path
 from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, TextBlock, query
 
 from marginalia.ocr.engine import EngineInfo
-from marginalia.ocr.prompts import system_prompt
+from marginalia.ocr.prompts import SYSTEM_PROMPT
 
 
 class AgentSDKEngine:
@@ -38,16 +38,16 @@ class AgentSDKEngine:
         with tempfile.TemporaryDirectory() as tmp:
             image_path = Path(tmp) / "page.png"
             image_path.write_bytes(image_png)
+            transcription_prompt = f"Read the image at {image_path} and {prompt}"
             options = ClaudeAgentOptions(
                 model=self._model,
-                system_prompt=system_prompt(),
+                system_prompt=SYSTEM_PROMPT,
                 allowed_tools=["Read"],
                 permission_mode="bypassPermissions",  # ponytail: our own temp PNG, no permission prompts
                 max_turns=3,  # read the image + answer, with headroom
                 cwd=tmp,
             )
-            full_prompt = f"Read the image at {image_path} and {prompt}"
-            async for message in query(prompt=full_prompt, options=options):
+            async for message in query(prompt=transcription_prompt, options=options):
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):

@@ -7,11 +7,11 @@ This is the ONLY place that wires the OCR engine, the job store, and the event s
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 from marginalia.jobs.store import JobStore
 from marginalia.ocr.engine import OCREngine
-from marginalia.ocr.prompts import handwriting_prompt
+from marginalia.ocr.prompts import HANDWRITING_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +21,13 @@ async def run_ocr(
     engine: OCREngine,
     job_id: str,
     prompt: str | None = None,
-) -> AsyncIterator[dict]:
+) -> AsyncGenerator[dict, None]:
     """Transcribe every page of a job, persisting each page as it completes and yielding events.
 
     Event shapes (see CLAUDE.md §6): ``page_started`` / ``page_delta`` / ``page_done`` / ``job_done`` /
     ``error``. Each page is saved on completion, so a dropped stream can resume from disk.
     """
-    prompt = prompt or handwriting_prompt()
+    prompt = prompt or HANDWRITING_PROMPT
     record = store.set_status(job_id, "running")
     try:
         for page in record.pages:

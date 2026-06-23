@@ -61,6 +61,13 @@ def test_save_page_markdown(tmp_path) -> None:
     assert page.done is True
 
 
+def test_save_page_markdown_missing_index_raises(tmp_path) -> None:
+    store = JobStore(root=tmp_path)
+    record = store.create(_notebook())
+    with pytest.raises(ValueError, match="Page 99 not found"):
+        store.save_page_markdown(record.job_id, 99, "ghost")
+
+
 async def test_run_ocr_streams_and_persists(tmp_path) -> None:
     store = JobStore(root=tmp_path)
     record = store.create(_notebook())
