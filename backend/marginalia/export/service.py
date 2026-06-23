@@ -44,11 +44,18 @@ def _render_index(links: tuple[str, ...]) -> str:
 
 
 def export_notes(sources: list[NoteSource], strategies: list[Strategy], vault_root: Path) -> list[Path]:
-    """Plan, render, and write the notes into the vault. Returns the written file paths."""
+    """Plan, render, and write the notes into the vault. Returns the written file paths.
+
+    Raises ``ValueError`` if a planned note path escapes ``vault_root`` — a path traversal via a
+    crafted source folder (``..`` in the upload filename or target dir). The API layer maps it to a 400.
+    """
     env = _environment()
+    root = vault_root.resolve()
     written: list[Path] = []
     for plan in build_plan(sources, strategies):
         dest = vault_root / Path(plan.dest_path)
+        if not dest.resolve().is_relative_to(root):
+            raise ValueError(f"Note path escapes the vault: {plan.dest_path}")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(render_note(env, plan), encoding="utf-8")
         written.append(dest)

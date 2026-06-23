@@ -90,7 +90,10 @@ def export_job(job_id: str, body: ExportBody, store: JobStore = Depends(get_stor
     record = _load_or_404(store, job_id)
     source = _note_source(record, body.target_dir)
     strategies = cast(list[Strategy], body.strategies)
-    written = export_notes([source], strategies, Path(body.vault_path))
+    try:
+        written = export_notes([source], strategies, Path(body.vault_path))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Export path escapes the vault.") from None
     return ExportOut(written=[str(path) for path in written])
 
 
@@ -103,7 +106,9 @@ async def _notebook_from_request(file: UploadFile | None, rel_path: str | None) 
         # pymupdf raises FileDataError (a RuntimeError) / ValueError on a non-PDF — a client error, not a 500.
         except (ValueError, RuntimeError):
             raise HTTPException(status_code=400, detail="Could not read the PDF.") from None
-        return Notebook(name=Path(filename).stem, source_rel_path=filename, pages=pages)
+        # Basename only: a loose upload must never define folders (that's target_dir's job), and a
+        # crafted "../" filename must not reach the export path as a traversal.
+        return Notebook(name=Path(filename).stem, source_rel_path=Path(filename).name, pages=pages)
     if rel_path:
         root = _scan_root()
         return load_notebook(_safe_join(root, rel_path), root=root)

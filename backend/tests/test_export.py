@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from marginalia.export.service import export_notes
 from marginalia.structure.mapper import NoteSource
 
@@ -31,3 +33,14 @@ def test_export_mirror_only_skips_index(tmp_path) -> None:
     sources = [NoteSource(name="a", source_rel_dir="", pages_markdown=["x"])]
     written = export_notes(sources, ["mirror"], vault)
     assert written == [vault / "a.md"]
+
+
+def test_export_rejects_path_traversal(tmp_path) -> None:
+    vault = tmp_path / "vault"
+    outside = tmp_path / "outside.md"
+    sources = [NoteSource(name="outside", source_rel_dir="../..", pages_markdown=["x"])]
+
+    with pytest.raises(ValueError, match="escapes the vault"):
+        export_notes(sources, ["mirror"], vault)
+
+    assert not outside.exists()
