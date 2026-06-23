@@ -227,6 +227,11 @@ function LoadPanel({ providerId, onLoaded }: { providerId: string; onLoaded: (mo
 
   return (
     <div className="px-3 pb-2.5 pt-0.5 border-t border-default bg-surface">
+      <p className="text-2xs text-muted py-1 leading-relaxed">
+        Open the <strong className="font-medium text-secondary">LM Studio app</strong> first (or enable
+        “Run server on login” in its settings) — it can’t be started automatically. Then your downloaded
+        models appear here; pick one to load it.
+      </p>
       {error && <p className="text-2xs py-1" style={{ color: "var(--color-error)" }}>{error}</p>}
       {models === null && !error && <p className="text-2xs text-muted italic py-1">Looking for models…</p>}
       {models !== null && models.length === 0 && (
@@ -332,6 +337,11 @@ function PullPanel({
 
   return (
     <div className="px-3 pb-2.5 pt-0.5 border-t border-default bg-surface flex flex-col gap-1.5">
+      <p className="text-2xs text-muted py-0.5 leading-relaxed">
+        <strong className="font-medium text-secondary">Ollama must be running</strong> (open the app or run
+        <code className="px-1">ollama serve</code>). Pull a <strong className="font-medium text-secondary">vision</strong>{" "}
+        model — text-only models can’t read handwriting.
+      </p>
       <div className="flex flex-wrap gap-1 pt-0.5">
         {RECOMMENDED_MODELS.map((rec) => (
           <button
