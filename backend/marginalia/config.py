@@ -39,6 +39,7 @@ class Settings(BaseModel):
     active_provider: str | None = None
     active_model: str | None = None
     strategies: list[str] = Field(default_factory=lambda: ["mirror"])
+    api_keys: dict[str, str] = Field(default_factory=dict)  # provider_id -> cloud API key entered in the UI
 
 
 def load_providers(path: Path = PROVIDERS_PATH) -> list[ProviderConfig]:
@@ -47,6 +48,20 @@ def load_providers(path: Path = PROVIDERS_PATH) -> list[ProviderConfig]:
         return []
     raw = tomllib.loads(path.read_text(encoding="utf-8"))
     return [ProviderConfig(**entry) for entry in raw.get("providers", [])]
+
+
+def resolve_providers(settings: Settings) -> list[ProviderConfig]:
+    """Provider catalogue with UI-entered API keys overlaid on the seed catalogue.
+
+    Lets a user paste a cloud key from the app (saved to ``settings.json``) without editing
+    ``providers.toml``. A settings key wins over the seed; a provider with no override keeps its
+    seed key (or ``None``). This is how a UI-entered key reaches both the status probe and the engine.
+    """
+    overlaid: list[ProviderConfig] = []
+    for provider in load_providers():
+        key = settings.api_keys.get(provider.id)
+        overlaid.append(provider.model_copy(update={"api_key": key}) if key else provider)
+    return overlaid
 
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:

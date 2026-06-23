@@ -11,11 +11,12 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from marginalia.api import jobs, providers
+from marginalia.api import jobs, paths, providers
 
 app = FastAPI(title="marginalia")
 app.include_router(providers.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
+app.include_router(paths.router, prefix="/api")
 
 _FRONTEND_DIST = Path("frontend/dist")
 if _FRONTEND_DIST.is_dir():  # present only after `npm run build`; in dev Vite owns the UI
