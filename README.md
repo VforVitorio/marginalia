@@ -14,7 +14,7 @@ The name comes from *marginalia*, the notes people used to scribble in the margi
   <img src="docs/demo/marginalia-demo.gif" alt="marginalia demo: a handwritten Kindle Scribe page transcribed to Markdown and exported to an Obsidian vault" width="900">
 </p>
 <p align="center">
-  <em>Import a Scribe PDF → OCR the handwriting (even math, as KaTeX) → review side-by-side → export to your Obsidian vault. <a href="docs/demo/marginalia-demo.mp4">▶ full-quality video</a></em>
+  <em>Import a Scribe PDF → OCR the handwriting (even math, as KaTeX) → review side-by-side → export to your Obsidian vault. <a href="docs/demo/marginalia-demo.mp4">full-quality video</a></em>
 </p>
 
 ## Kindle Scribe only (for now)
