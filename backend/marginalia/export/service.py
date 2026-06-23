@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
 
 from marginalia.structure.mapper import NotePlan, NoteSource, Strategy, build_plan
 
@@ -16,12 +16,10 @@ _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
 def _environment() -> Environment:
-    # select_autoescape() only escapes html/htm/xml/xhtml templates; our note.md.j2 is Markdown, so it
-    # is NOT escaped (HTML-escaping would corrupt the notes). Preferred over a bare autoescape=False —
-    # same behaviour for Markdown, but it's the pattern static analysis recognises as safe.
+    # autoescape=False on purpose: the output is Markdown, not HTML — escaping would corrupt it.
     return Environment(
         loader=FileSystemLoader(_TEMPLATES_DIR),
-        autoescape=select_autoescape(),
+        autoescape=False,
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
@@ -46,20 +44,12 @@ def _render_index(links: tuple[str, ...]) -> str:
 
 
 def export_notes(sources: list[NoteSource], strategies: list[Strategy], vault_root: Path) -> list[Path]:
-    """Plan, render, and write the notes into the vault. Returns the written file paths.
-
-    Each destination is confined to ``vault_root`` — a plan whose path escapes it (e.g. a ``..`` in a
-    loose upload's target folder) is skipped rather than written outside the vault (path-traversal guard).
-    """
+    """Plan, render, and write the notes into the vault. Returns the written file paths."""
     env = _environment()
-    root = vault_root.resolve()
     written: list[Path] = []
     for plan in build_plan(sources, strategies):
         dest = vault_root / Path(plan.dest_path)
-        safe = dest.resolve()  # write through the *validated* path so the guard covers the sink
-        if not safe.is_relative_to(root):
-            continue  # destination escapes the vault — refuse to write it
-        safe.parent.mkdir(parents=True, exist_ok=True)
-        safe.write_text(render_note(env, plan), encoding="utf-8")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(render_note(env, plan), encoding="utf-8")
         written.append(dest)
     return written
