@@ -12,7 +12,7 @@
  *  4. "Done — Export" button becomes active once job_done is received.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   getJob,
   updatePageMarkdown,
@@ -60,8 +60,9 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   const [saveError, setSaveError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Tracks which page indices have unsaved edits.
-  const pendingSave = useRef<Set<number>>(new Set());
+  // Page indices with a save in flight. State (not a ref) so the "Saving…"
+  // indicator actually re-renders when it changes.
+  const [savingPages, setSavingPages] = useState<Set<number>>(() => new Set());
   const saveTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   // ── Initial state fetch ──────────────────────────────────────────────────
@@ -135,7 +136,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   // ── Auto-save ────────────────────────────────────────────────────────────
 
   function scheduleSave(pageIndex: number) {
-    pendingSave.current.add(pageIndex);
+    setSavingPages((prev) => new Set(prev).add(pageIndex));
     const existing = saveTimers.current.get(pageIndex);
     if (existing) clearTimeout(existing);
 
@@ -155,8 +156,12 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed.");
     } finally {
-      // Always clear the pending flag so the "Saving…" indicator never sticks.
-      pendingSave.current.delete(pageIndex);
+      // Always clear the flag so the "Saving…" indicator never sticks.
+      setSavingPages((prev) => {
+        const next = new Set(prev);
+        next.delete(pageIndex);
+        return next;
+      });
     }
   }
 
@@ -208,9 +213,16 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
 
         {/* Progress bar */}
         <div className="flex items-center gap-2">
-          <div className="w-32 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          <div
+            role="progressbar"
+            aria-label="OCR progress"
+            aria-valuenow={Math.round(progress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="w-32 h-1.5 rounded-full bg-surface-2 overflow-hidden"
+          >
             <div
-              className="h-full rounded-full transition-all duration-500"
+              className="h-full rounded-full transition-[width] duration-500"
               style={{
                 width: `${progress * 100}%`,
                 backgroundColor: "var(--color-accent)",
@@ -291,7 +303,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
               <span className="text-xs font-medium text-muted uppercase tracking-wide">
                 Transcript
               </span>
-              {pendingSave.current.has(activePage) && (
+              {savingPages.has(activePage) && (
                 <span className="text-2xs text-muted ml-auto italic">Saving…</span>
               )}
             </div>
@@ -322,7 +334,11 @@ interface PageTabsProps {
   onSelect: (index: number) => void;
 }
 
-function PageTabs({ pages, activePage, onSelect }: PageTabsProps) {
+// Memoised: the tabs only depend on each page's index/done/streaming and the
+// active page — NOT the markdown, which changes on every streamed token. The
+// custom comparator skips re-rendering all tab buttons while OCR streams text.
+const PageTabs = memo(
+  function PageTabs({ pages, activePage, onSelect }: PageTabsProps) {
   return (
     <div
       role="tablist"
@@ -354,7 +370,16 @@ function PageTabs({ pages, activePage, onSelect }: PageTabsProps) {
       ))}
     </div>
   );
-}
+  },
+  (prev, next) =>
+    prev.activePage === next.activePage &&
+    prev.onSelect === next.onSelect &&
+    prev.pages.length === next.pages.length &&
+    prev.pages.every((p, i) => {
+      const q = next.pages[i];
+      return p.index === q.index && p.done === q.done && p.streaming === q.streaming;
+    }),
+);
 
 function DoneChip() {
   return (
