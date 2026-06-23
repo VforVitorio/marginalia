@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -41,7 +42,7 @@ class JobRecord(BaseModel):
     job_id: str
     name: str
     source_rel_path: str
-    status: str = "pending"  # pending | running | done | error
+    status: Literal["pending", "running", "done", "error"] = "pending"
     pages: list[JobPage] = Field(default_factory=list)
 
 
@@ -79,7 +80,7 @@ class JobStore:
         """Filesystem path of a page's PNG (the API serves it as an image)."""
         return self._job_dir(job_id) / f"page_{index}.png"
 
-    def set_status(self, job_id: str, status: str) -> JobRecord:
+    def set_status(self, job_id: str, status: Literal["pending", "running", "done", "error"]) -> JobRecord:
         """Update and persist a job's status."""
         record = self.load(job_id)
         record.status = status
@@ -95,8 +96,9 @@ class JobStore:
             if page.index == index:
                 page.markdown = markdown
                 page.done = done or page.done
-        self._write(record)
-        return record
+                self._write(record)
+                return record
+        raise ValueError(f"Page {index} not found in job {job_id}")
 
     def _job_dir(self, job_id: str) -> Path:
         return self._root / _validate_job_id(job_id)

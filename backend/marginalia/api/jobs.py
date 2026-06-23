@@ -77,10 +77,11 @@ def edit_page(
     store: JobStore = Depends(get_store),
 ) -> JobPageOut:
     _load_or_404(store, job_id)
-    record = store.save_page_markdown(job_id, index, body.markdown)
-    page = next((entry for entry in record.pages if entry.index == index), None)
-    if page is None:
-        raise HTTPException(status_code=404, detail="Page not found.")
+    try:
+        record = store.save_page_markdown(job_id, index, body.markdown)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Page not found.") from None
+    page = next(entry for entry in record.pages if entry.index == index)
     return _page_out(job_id, page.index, page.markdown, page.done)
 
 
@@ -99,7 +100,8 @@ async def _notebook_from_request(file: UploadFile | None, rel_path: str | None) 
         filename = file.filename or "upload.pdf"
         try:
             pages = render_pdf(data)
-        except Exception:  # PyMuPDF raises on a non-PDF / corrupt upload — a client error, not a 500
+        # pymupdf raises FileDataError (a RuntimeError) / ValueError on a non-PDF — a client error, not a 500.
+        except (ValueError, RuntimeError):
             raise HTTPException(status_code=400, detail="Could not read the PDF.") from None
         return Notebook(name=Path(filename).stem, source_rel_path=filename, pages=pages)
     if rel_path:

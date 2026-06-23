@@ -1,14 +1,14 @@
 """OCR prompts. Centralised so you can tune transcription in one place.
 
 There are two prompts:
-- ``system_prompt()`` — the big, Obsidian-tuned instructions the model follows.
-- ``handwriting_prompt()`` — the short per-page instruction sent with each page image.
+- ``SYSTEM_PROMPT`` — the big, Obsidian-tuned instructions the model follows.
+- ``HANDWRITING_PROMPT`` — the short per-page instruction sent with each page image.
 
 Edit these to change how the model transcribes (conventions, structure, strictness). The README points
 users here ("Customizing the OCR system prompt").
 """
 
-_SYSTEM_PROMPT = (
+SYSTEM_PROMPT = (
     "You are an OCR transcriber for handwritten study notes that will live in an Obsidian vault. "
     "Transcribe the handwriting in the image faithfully into clean, well-structured Markdown that "
     "Obsidian renders richly. Follow these rules:\n"
@@ -39,14 +39,4 @@ _SYSTEM_PROMPT = (
     "whole note in a code fence."
 )
 
-_HANDWRITING_PROMPT = "Transcribe this handwritten page into Obsidian Markdown. Output only the note content."
-
-
-def system_prompt() -> str:
-    """The Obsidian-tuned system prompt for the OCR model. Edit here to change transcription style."""
-    return _SYSTEM_PROMPT
-
-
-def handwriting_prompt() -> str:
-    """The short per-page instruction sent alongside the page image."""
-    return _HANDWRITING_PROMPT
+HANDWRITING_PROMPT = "Transcribe this handwritten page into Obsidian Markdown. Output only the note content."

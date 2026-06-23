@@ -20,6 +20,7 @@ import {
   type ProviderState,
   type ProviderStatus,
 } from "../api/client";
+import { PanelError } from "./PanelError";
 
 interface ProviderPickerProps {
   status: ProviderStatus[] | null;
@@ -89,6 +90,8 @@ export function ProviderPicker({ status, active, loading, onSelect, onRefresh }:
 
 // ── Provider row ───────────────────────────────────────────────────────────────
 
+type ExpandedPanel = "models" | "load" | "key" | "pull";
+
 interface ProviderRowProps {
   provider: ProviderStatus;
   isActive: boolean;
@@ -97,7 +100,7 @@ interface ProviderRowProps {
 }
 
 function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowProps) {
-  const [expanded, setExpanded] = useState<null | "models" | "load" | "key" | "pull">(null);
+  const [expanded, setExpanded] = useState<ExpandedPanel | null>(null);
 
   const isOllama = provider.id === "ollama";
   const canLoad = !isOllama && (provider.state === "unreachable" || provider.state === "no_model");
@@ -232,7 +235,7 @@ function LoadPanel({ providerId, onLoaded }: { providerId: string; onLoaded: (mo
         “Run server on login” in its settings) — it can’t be started automatically. Then your downloaded
         models appear here; pick one to load it.
       </p>
-      {error && <p className="text-2xs py-1" style={{ color: "var(--color-error)" }}>{error}</p>}
+      {error && <PanelError message={error} />}
       {models === null && !error && <p className="text-2xs text-muted italic py-1">Looking for models…</p>}
       {models !== null && models.length === 0 && (
         <p className="text-2xs text-muted italic py-1">No downloaded models. Download one in LM Studio first.</p>
@@ -299,7 +302,7 @@ function KeyPanel({ providerId, onSaved }: { providerId: string; onSaved: () => 
           {saving ? "Saving…" : "Save"}
         </button>
       </div>
-      {error && <p className="text-2xs" style={{ color: "var(--color-error)" }}>{error}</p>}
+      {error && <PanelError message={error} />}
       <p className="text-2xs text-muted">Stored locally in your settings, never committed.</p>
     </div>
   );
@@ -379,7 +382,7 @@ function PullPanel({
       {pulling && (
         <p className="text-2xs text-muted italic">Pulling… this can take a while.</p>
       )}
-      {error && <p className="text-2xs" style={{ color: "var(--color-error)" }}>{error}</p>}
+      {error && <PanelError message={error} />}
     </div>
   );
 }

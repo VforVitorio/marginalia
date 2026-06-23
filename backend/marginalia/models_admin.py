@@ -7,13 +7,15 @@ Pulling is Ollama-only for now; other providers report unsupported (the UI degra
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from urllib.parse import urlsplit
 
 import httpx
 
 from marginalia import lms_bridge
 from marginalia.config import ProviderConfig
+
+_HTTP_STATUS_TIMEOUT = 4.0
 
 
 def runtime_status(provider: ProviderConfig) -> tuple[bool, list[str]]:
@@ -31,7 +33,7 @@ def runtime_status(provider: ProviderConfig) -> tuple[bool, list[str]]:
             return False, []  # server closed — skip the multi-second HTTP wait
     headers = {"Authorization": f"Bearer {provider.api_key}"} if provider.api_key else {}
     try:
-        resp = httpx.get(f"{provider.base_url.rstrip('/')}/models", headers=headers, timeout=4.0)
+        resp = httpx.get(f"{provider.base_url.rstrip('/')}/models", headers=headers, timeout=_HTTP_STATUS_TIMEOUT)
         resp.raise_for_status()
     except httpx.HTTPError:
         return False, []
@@ -98,7 +100,7 @@ def _host_port(base_url: str, default_port: int) -> tuple[str, int]:
     return (parts.hostname or lms_bridge.DEFAULT_HOST, parts.port or default_port)
 
 
-async def pull_model(provider: ProviderConfig, model: str) -> AsyncIterator[dict]:
+async def pull_model(provider: ProviderConfig, model: str) -> AsyncGenerator[dict, None]:
     """Stream progress while Ollama pulls a model. Yields ``{status, percent}`` events."""
     base = (provider.base_url or "").rstrip("/").removesuffix("/v1")  # Ollama's pull API is at the root
     async with (

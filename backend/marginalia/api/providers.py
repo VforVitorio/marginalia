@@ -39,6 +39,8 @@ from marginalia.models_admin import (
 
 router = APIRouter()
 
+_PLACEHOLDER_KEY_PREFIX = "PUT_YOUR"
+
 
 @router.get("/settings")
 def read_settings() -> Settings:
@@ -102,7 +104,7 @@ def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderSt
             return status(True, models, "ready", "Signed in via your Claude Code subscription.")
         return status(False, models, "unknown", "Sign in with `claude login` to use Claude.")
     if provider.kind == "cloud":
-        configured = bool(provider.api_key) and "PUT_YOUR" not in (provider.api_key or "")
+        configured = bool(provider.api_key) and _PLACEHOLDER_KEY_PREFIX not in (provider.api_key or "")
         if not configured:
             return status(False, [], "needs_key", "Add your API key.")
         return status(True, [current] if current else [], "ready", "")

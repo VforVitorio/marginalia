@@ -16,6 +16,8 @@ class SettingsUpdate(BaseModel):
 
 
 class ProviderOut(BaseModel):
+    """Summary of one provider for the catalogue list (models omitted — fetched on demand)."""
+
     id: str
     display_name: str
     kind: str
@@ -24,45 +26,65 @@ class ProviderOut(BaseModel):
 
 
 class ProvidersOut(BaseModel):
+    """Full provider catalogue with the currently active provider id."""
+
     providers: list[ProviderOut]
     active: str | None
 
 
 class ProviderStatus(BaseModel):
+    """Live status of one provider as seen by the UI.
+
+    ``state`` vocabulary: ``ready`` | ``no_model`` | ``unreachable`` | ``needs_key`` | ``unknown``.
+    ``hint`` is a human-readable next step shown when the provider is not ready.
+    """
+
     id: str
     display_name: str
     kind: str
     reachable: bool
     models: list[str]
     current_model: str | None
-    state: str  # ready | no_model | unreachable | needs_key | unknown
+    state: str
     hint: str
 
 
 class ProvidersStatusOut(BaseModel):
+    """Live status for every configured provider."""
+
     providers: list[ProviderStatus]
 
 
 class SelectProvider(BaseModel):
+    """Request body for ``POST /providers/select``."""
+
     provider_id: str
     model: str | None = None
 
 
 class PullBody(BaseModel):
+    """Request body for ``POST /providers/{id}/pull`` and ``POST /providers/{id}/load``."""
+
     model: str
 
 
 class KeyBody(BaseModel):
+    """Request body for ``POST /providers/{id}/key``."""
+
     api_key: str
 
 
 class CreateJobOut(BaseModel):
+    """Response for ``POST /jobs``: the new job id and the number of pages detected."""
+
     job_id: str
     name: str
     pages: int
 
 
 class JobPageOut(BaseModel):
+    """One page as returned by the review API: its index, image URL, transcript, and done flag."""
+
     index: int
     image_url: str
     markdown: str
@@ -70,6 +92,8 @@ class JobPageOut(BaseModel):
 
 
 class JobOut(BaseModel):
+    """Full job state as returned by ``GET /jobs/{id}``."""
+
     job_id: str
     name: str
     status: str
@@ -77,14 +101,20 @@ class JobOut(BaseModel):
 
 
 class PageEdit(BaseModel):
+    """Request body for ``PUT /jobs/{id}/pages/{index}``."""
+
     markdown: str
 
 
 class ExportBody(BaseModel):
+    """Request body for ``POST /jobs/{id}/export``."""
+
     vault_path: str
     strategies: list[str]
     target_dir: str = ""  # destination subfolder for loose uploads (ignored for scanned notebooks)
 
 
 class ExportOut(BaseModel):
+    """Response for ``POST /jobs/{id}/export``: absolute paths of the written Markdown files."""
+
     written: list[str]

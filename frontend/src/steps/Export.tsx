@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { exportJob, getVaultSuggestions, type ExportResult, type Settings } from "../api/client";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Spinner } from "../components/Spinner";
+import { SuggestionChips } from "../components/SuggestionChips";
 
 interface ExportProps {
   jobId: string;
@@ -181,25 +182,11 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
 
         {/* Suggestion chips — only shown when suggestions exist */}
         {vaultSuggestions.length > 0 && (
-          <div className="flex flex-wrap gap-1.5" role="list" aria-label="Detected vaults">
-            {vaultSuggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                role="listitem"
-                className={[
-                  "text-2xs font-mono px-2 py-0.5 rounded-full border transition-colors truncate max-w-full",
-                  vaultPath === suggestion
-                    ? "border-terracotta-400/60 bg-terracotta-300/10 text-primary"
-                    : "border-default bg-surface-2 text-muted hover:border-terracotta-400/40 hover:text-primary",
-                ].join(" ")}
-                title={suggestion}
-                onClick={() => setVaultPath(suggestion)}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
+          <SuggestionChips
+            suggestions={vaultSuggestions}
+            selected={vaultPath}
+            onSelect={setVaultPath}
+          />
         )}
       </div>
 
@@ -235,7 +222,6 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
         </p>
 
         <StrategyToggle
-          name="mirror"
           label="Mirror folder structure"
           description="Reproduce your Scribe folder hierarchy in the vault."
           enabled={true}
@@ -244,7 +230,6 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
         />
 
         <StrategyToggle
-          name="wikilinks"
           label="Generate wikilinks index"
           description="Create a [[wikilinks]] index note per folder for easy navigation."
           enabled={strategies.includes("wikilinks")}
@@ -280,7 +265,6 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface StrategyToggleProps {
-  name: string;
   label: string;
   description: string;
   enabled: boolean;
