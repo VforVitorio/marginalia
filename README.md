@@ -10,6 +10,13 @@ You write by hand on the Scribe, export the notebook as a PDF, and marginalia do
 
 The name comes from *marginalia*, the notes people used to scribble in the margins of manuscripts. Same idea: getting handwritten thought to survive the jump to digital.
 
+<p align="center">
+  <img src="docs/demo/marginalia-demo.gif" alt="marginalia demo: a handwritten Kindle Scribe page transcribed to Markdown and exported to an Obsidian vault" width="900">
+</p>
+<p align="center">
+  <em>Import a Scribe PDF → OCR the handwriting (even math, as KaTeX) → review side-by-side → export to your Obsidian vault. <a href="docs/demo/marginalia-demo.mp4">▶ full-quality video</a></em>
+</p>
+
 ## Kindle Scribe only (for now)
 
 This is built for the Kindle Scribe and nothing else. No reMarkable, no Apple Notes, no Samsung Notes. If you use another device, marginalia won't help you yet — and there are tools that already do this well for those (Scrybble for reMarkable, for instance).
