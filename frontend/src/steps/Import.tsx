@@ -149,7 +149,6 @@ export function Import({ onJobCreated }: ImportProps) {
     }
 
     bootstrap();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const dropZoneClass = [

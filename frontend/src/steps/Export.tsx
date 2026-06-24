@@ -51,7 +51,6 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
   // Detect vaults on mount so chips are ready immediately.
   useEffect(() => {
     detectVaults();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleStrategy(name: string) {

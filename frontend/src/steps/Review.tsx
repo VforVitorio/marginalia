@@ -172,10 +172,12 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     scheduleSave(pageIndex);
   }
 
-  // Flush on unmount
+  // Clear any pending save timers on unmount. Capture the Map ref now so the
+  // cleanup closes over the same instance (it's mutated in place as edits land).
   useEffect(() => {
+    const timers = saveTimers.current;
     return () => {
-      saveTimers.current.forEach(clearTimeout);
+      timers.forEach(clearTimeout);
     };
   }, []);
 
