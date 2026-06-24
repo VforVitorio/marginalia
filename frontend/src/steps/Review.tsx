@@ -293,7 +293,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
                 key={`${jobId}-${activePage}`}
                 src={pageImageUrl(jobId, activePage)}
                 alt={`Page ${activePage} original`}
-                className="max-w-full max-h-[600px] object-contain rounded-lg shadow-warm"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-warm"
                 loading="lazy"
               />
             </div>
