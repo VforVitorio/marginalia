@@ -15,6 +15,9 @@ dependencies = [
     "claude-agent-sdk>=0.1",
 ]
 
+[project.scripts]
+marginalia = "marginalia.api.run:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8",

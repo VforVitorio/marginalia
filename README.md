@@ -47,15 +47,13 @@ You'll need: Python 3.12+, Node.js 20+, Ollama or LM Studio if you want local OC
 ```bash
 git clone https://github.com/VforVitorio/marginalia.git
 cd marginalia
-uv sync
-cp providers.example.toml providers.toml          # set your vault path and Gemini key if you have one
-cd frontend && npm ci && npm run build && cd ..    # build the UI (the backend serves it)
-uv run uvicorn marginalia.api.main:app
+cp providers.example.toml providers.toml   # set your vault path and Gemini key if you have one
+scripts/run.sh                             # macOS/Linux  (Windows: scripts\run.ps1)
 ```
 
-Open http://localhost:8000 and import a notebook. (The vault path and almost everything else is set from the UI — `providers.toml` is just the starting point and where API keys live.)
+`run.sh` / `run.ps1` install deps, build the UI, and start everything on http://localhost:8000 — open it and import a notebook. After that first build, daily launches are just `uv run marginalia`. (The vault path and almost everything else is set from the UI — `providers.toml` is just the starting point and where API keys live.)
 
-For development, run the API and the Vite dev server separately: `npm run dev` in `frontend/` serves the UI on `:5173` and proxies `/api` to the backend.
+Prefer the manual steps? `uv sync` → build the frontend (`cd frontend && npm ci && npm run build`) → `uv run marginalia`. For development, run the API and the Vite dev server separately: `npm run dev` in `frontend/` serves the UI on `:5173` and proxies `/api` to the backend.
 
 ## How it works
 
