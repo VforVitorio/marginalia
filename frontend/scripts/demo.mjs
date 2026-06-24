@@ -16,6 +16,10 @@ const URL = "http://localhost:5173/";
 
 const log = (m) => console.log(`[demo] ${m}`);
 const wait = (p, ms) => p.waitForTimeout(ms);
+// Elapsed seconds since recording start — printed as MARK lines so the encoder
+// can fast-forward the slow OCR window and keep the rest at reading speed.
+const t0 = Date.now();
+const elapsed = () => ((Date.now() - t0) / 1000).toFixed(1);
 
 const browser = await chromium.launch({ headless: true });
 const ctx = await browser.newContext({
@@ -61,22 +65,31 @@ await wait(page, 800);
 await page.setInputFiles('input[type="file"]', PDF);
 log("uploaded " + PDF);
 
-// ── Review: wait for the transcript panel + let OCR stream ─────────────
+// ── Review: stream, then wait until page 1 renders as Markdown/KaTeX ───
 await page.waitForSelector("text=Transcript", { timeout: 45000 }).catch(() => log("no Transcript yet"));
+log(`MARK stream ${elapsed()}`); // OCR streaming begins (raw text flowing in)
+await page.screenshot({ path: OUTDIR + "/01-streaming.png" }).catch(() => {});
+
+// Wait for the first page to finish — the formatted Markdown (a KaTeX math node)
+// replacing the raw stream is the moment worth showing.
+await page.waitForSelector(".katex", { timeout: 120000 }).catch(() => log("no rendered math"));
 await wait(page, 1500);
-await page.screenshot({ path: OUTDIR + "/01-review.png" }).catch(() => {});
+log(`MARK done ${elapsed()}`); // page 1 rendered — end of the fast-forward window
+await page.screenshot({ path: OUTDIR + "/02-rendered.png" }).catch(() => {});
 
-// Let Claude stream the first page (enough to show live OCR + KaTeX).
-await wait(page, 18000);
-await page.screenshot({ path: OUTDIR + "/02-streaming.png" }).catch(() => {});
-
-// Navigate to page 2 tab if present, to show multi-page.
+// ── Inline edit: click-to-edit swaps in the source editor, then re-renders ──
 try {
-  await page.getByRole("tab", { name: /page 2/i }).click({ timeout: 3000 });
-  await wait(page, 4000);
-} catch { /* single page or not ready */ }
+  await page.getByRole("button", { name: /edit transcript/i }).click({ timeout: 5000 });
+  await wait(page, 2000); // viewer sees the editable Markdown source
+  await page.screenshot({ path: OUTDIR + "/03-editing.png" }).catch(() => {});
+  await page.locator('img[alt*="original"]').click(); // blur → re-render to KaTeX
+  await wait(page, 1500);
+  log("inline edit shown");
+} catch (e) {
+  log("inline edit skipped: " + e.message);
+}
 
-// ── Stop to unlock Export, then go to the Export step ─────────────────
+// ── Stop to unlock Export, then export to the vault ───────────────────
 try {
   await page.getByRole("button", { name: /stop/i }).click({ timeout: 3000 });
   await wait(page, 1000);
@@ -85,7 +98,6 @@ try {
 try {
   await page.getByRole("button", { name: /^export/i }).first().click({ timeout: 5000 });
   await wait(page, 1500);
-  await page.screenshot({ path: OUTDIR + "/03-export-form.png" }).catch(() => {});
   const vault = page.locator("#vault-path");
   if (await vault.count()) {
     await vault.fill(VAULT);
@@ -100,7 +112,8 @@ try {
   log("export step issue: " + e.message);
 }
 
-await wait(page, 1200);
+await wait(page, 1000);
+log(`MARK end ${elapsed()}`);
 await ctx.close(); // finalizes the video file
 await browser.close();
 log("FINISHED — video in " + OUTDIR);
