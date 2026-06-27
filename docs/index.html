@@ -129,7 +129,8 @@
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
     .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: .5rem; }
     .card p { color: var(--text-2); font-size: .95rem; }
-    .card .ico { font-size: 1.4rem; margin-bottom: .75rem; display: block; }
+    .card .ico { color: var(--accent); margin-bottom: .85rem; line-height: 0; }
+    .card .ico svg { width: 26px; height: 26px; }
 
     /* Why */
     .why { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -182,6 +183,15 @@
     .devs p { color: var(--text-2); max-width: 56ch; margin: .85rem auto 0; }
     .devs .links { display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; margin-top: 1.25rem; font-size: .95rem; }
 
+    /* Author */
+    .author { text-align: center; }
+    .author-card { max-width: 480px; margin: 2rem auto 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem 1.75rem; }
+    .author-avatar { width: 84px; height: 84px; border-radius: 999px; border: 2px solid var(--border-strong); object-fit: cover; margin: 0 auto .9rem; display: block; }
+    .author-name { font-size: 1.2rem; font-weight: 600; }
+    .author-role { color: var(--accent-light); font-size: .85rem; margin-top: .15rem; }
+    .author-bio { color: var(--text-2); font-size: .95rem; margin-top: .9rem; }
+    .author-links { display: flex; gap: .75rem; justify-content: center; margin-top: 1.2rem; }
+
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
     @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -225,22 +235,22 @@
         <h2 class="section-title" data-i18n="features.title">What it does</h2>
         <div class="grid">
           <div class="card">
-            <span class="ico">🔒</span>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
             <h3 data-i18n="f1.t">Local or cloud OCR</h3>
             <p data-i18n="f1.d">Qwen3-VL via Ollama or LM Studio, fully private — or Claude/Gemini in the cloud for the hard pages.</p>
           </div>
           <div class="card">
-            <span class="ico">👁️</span>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
             <h3 data-i18n="f2.t">Side-by-side review</h3>
             <p data-i18n="f2.d">Your original page next to the transcription. Fix the OCR before anything touches your vault.</p>
           </div>
           <div class="card">
-            <span class="ico">🗂️</span>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>
             <h3 data-i18n="f3.t">Folder-mirroring export</h3>
             <p data-i18n="f3.d">Your Scribe folders become folders and wikilinks in Obsidian.</p>
           </div>
           <div class="card">
-            <span class="ico">∑</span>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 5H7l6 7-6 7h10"/></svg></span>
             <h3 data-i18n="f4.t">Real Markdown + math</h3>
             <p data-i18n="f4.d">Headings, tables, callouts, and handwritten math rendered as KaTeX.</p>
           </div>
@@ -337,6 +347,22 @@ scripts\run.ps1</pre>
         </div>
       </div>
     </section>
+
+    <!-- Meet the author -->
+    <section class="author">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="author.title">Meet the author</h2>
+        <div class="author-card">
+          <img class="author-avatar" src="https://avatars.githubusercontent.com/VforVitorio" alt="Víctor Vega" loading="lazy" width="84" height="84" />
+          <div class="author-name">Víctor Vega</div>
+          <div class="author-role" data-i18n="author.role">Builder of marginalia</div>
+          <p class="author-bio" data-i18n="author.bio">AI &amp; Data Intern at NTT DATA Spain and an Intelligent Systems Engineering student building AI for Formula 1. He made marginalia for himself — to get his own handwritten Kindle Scribe notes into Obsidian.</p>
+          <div class="author-links">
+            <a class="btn btn-ghost btn-sm" href="https://github.com/VforVitorio" target="_blank" rel="noopener">GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -372,7 +398,9 @@ scripts\run.ps1</pre>
         "q2.q": "Does my data stay private?", "q2.a": "With local OCR, nothing leaves your machine. Cloud OCR (Claude or Gemini) is optional, for the pages a local model struggles with.",
         "q3.q": "What if the OCR makes mistakes?", "q3.a": "That's what the review step is for: you see the original page next to the text and fix any slips before anything is written to your vault.",
         "q4.q": "Which devices does it support?", "q4.a": "The Kindle Scribe only, for now. Other devices already have good tools (e.g. Scrybble for reMarkable).",
-        "devs.title": "For developers", "devs.body": "Open source (MIT). Python + FastAPI backend, React frontend, with clean module boundaries and a one-command run. Contributions welcome — Scribe-only in scope.", "devs.arch": "Architecture →"
+        "devs.title": "For developers", "devs.body": "Open source (MIT). Python + FastAPI backend, React frontend, with clean module boundaries and a one-command run. Contributions welcome — Scribe-only in scope.", "devs.arch": "Architecture →",
+        "author.title": "Meet the author", "author.role": "Builder of marginalia",
+        "author.bio": "AI & Data Intern at NTT DATA Spain and an Intelligent Systems Engineering student building AI for Formula 1. He made marginalia for himself — to get his own handwritten Kindle Scribe notes into Obsidian."
       },
       es: {
         "hero.title": 'Convierte tus cuadernos manuscritos del Kindle Scribe en <span class="accent">Markdown para Obsidian</span>.',
@@ -398,7 +426,9 @@ scripts\run.ps1</pre>
         "q2.q": "¿Mis datos se quedan privados?", "q2.a": "Con OCR local, nada sale de tu máquina. El OCR en la nube (Claude o Gemini) es opcional, para las páginas que el modelo local no clava.",
         "q3.q": "¿Y si el OCR se equivoca?", "q3.a": "Para eso está la revisión: ves la página original junto al texto y corriges los fallos antes de que nada toque tu vault.",
         "q4.q": "¿Qué dispositivos soporta?", "q4.a": "Solo el Kindle Scribe, por ahora. Otros dispositivos ya tienen buenas herramientas (p. ej. Scrybble para reMarkable).",
-        "devs.title": "Para desarrolladores", "devs.body": "Open source (MIT). Backend Python + FastAPI, frontend React, con fronteras de módulo limpias y arranque de un comando. Contribuciones bienvenidas — alcance solo-Scribe.", "devs.arch": "Arquitectura →"
+        "devs.title": "Para desarrolladores", "devs.body": "Open source (MIT). Backend Python + FastAPI, frontend React, con fronteras de módulo limpias y arranque de un comando. Contribuciones bienvenidas — alcance solo-Scribe.", "devs.arch": "Arquitectura →",
+        "author.title": "Sobre el autor", "author.role": "Creador de marginalia",
+        "author.bio": "AI & Data Intern en NTT DATA España y estudiante de Ingeniería de Sistemas Inteligentes que construye IA para la Fórmula 1. Hizo marginalia para sí mismo — para meter sus propias notas manuscritas del Kindle Scribe en Obsidian."
       }
     };
 
@@ -423,8 +453,5 @@ scripts\run.ps1</pre>
       b.addEventListener("click", () => applyLang(b.dataset.lang))
     );
   </script>
-
-  <!-- Cloudflare Web Analytics — replace the token below with your vforvitorio.github.io site token -->
-  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "REPLACE_WITH_CLOUDFLARE_TOKEN"}'></script>
 </body>
 </html>
