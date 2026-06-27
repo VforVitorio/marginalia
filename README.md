@@ -42,18 +42,28 @@ It's not laziness about portability: export quirks differ enough between devices
 
 ## Getting started
 
-You'll need: Python 3.12+, Node.js 20+, Ollama or LM Studio if you want local OCR, a Kindle Scribe, and an Obsidian vault.
+### Install (one command — no Node required)
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.ps1 | iex
+```
+
+The installer sets up `uv` (which brings its own Python), clones marginalia, downloads the prebuilt frontend from the latest release, and launches the app on http://localhost:8000. You only need **git + a shell**. For **local OCR** also install Ollama or LM Studio; for **cloud OCR** use a Claude or Gemini account. Relaunch any time with `uv run marginalia` (from the install folder, default `~/marginalia`). The vault path and almost everything else is set from the UI — `providers.toml` is just the starting point and where API keys live.
+
+### From source (development — needs Node 20+)
 
 ```bash
 git clone https://github.com/VforVitorio/marginalia.git
 cd marginalia
-cp providers.example.toml providers.toml   # set your vault path and Gemini key if you have one
-scripts/run.sh                             # macOS/Linux  (Windows: scripts\run.ps1)
+cp providers.example.toml providers.toml
+scripts/run.sh        # macOS/Linux (Windows: scripts\run.ps1) — builds the UI from source, then runs
 ```
 
-`run.sh` / `run.ps1` install deps, build the UI, and start everything on http://localhost:8000 — open it and import a notebook. After that first build, daily launches are just `uv run marginalia`. (The vault path and almost everything else is set from the UI — `providers.toml` is just the starting point and where API keys live.)
-
-Prefer the manual steps? `uv sync` → build the frontend (`cd frontend && npm ci && npm run build`) → `uv run marginalia`. For development, run the API and the Vite dev server separately: `npm run dev` in `frontend/` serves the UI on `:5173` and proxies `/api` to the backend.
+For frontend work, run the API and the Vite dev server separately: `npm run dev` in `frontend/` serves the UI on `:5173` and proxies `/api` to the backend.
 
 ## How it works
 

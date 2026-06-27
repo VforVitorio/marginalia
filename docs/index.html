@@ -36,7 +36,7 @@
     "operatingSystem": "Windows, macOS, Linux",
     "url": "https://github.com/VforVitorio/marginalia",
     "license": "https://opensource.org/licenses/MIT",
-    "author": { "@type": "Person", "name": "Víctor Vega" },
+    "author": { "@type": "Person", "name": "VforVitorio", "url": "https://github.com/VforVitorio" },
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
   }
   </script>
@@ -85,6 +85,8 @@
     }
     .nav { display: flex; align-items: center; gap: 1rem; height: 60px; }
     .wordmark { font-family: "Newsreader", Georgia, serif; font-style: italic; font-size: 1.4rem; letter-spacing: -.01em; }
+    .ver { font-size: .72rem; color: var(--text-3); border: 1px solid var(--border-strong); border-radius: 999px; padding: .12rem .55rem; letter-spacing: .02em; transition: color .15s, border-color .15s; }
+    .ver:hover { color: var(--accent-light); border-color: var(--accent); }
     .nav-right { margin-left: auto; display: flex; align-items: center; gap: .6rem; }
     .langtoggle { display: flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; }
     .langtoggle button {
@@ -201,6 +203,7 @@
   <header>
     <div class="wrap nav">
       <a href="#" class="wordmark">marginalia</a>
+      <a id="ver" class="ver" href="https://github.com/VforVitorio/marginalia/releases/latest" target="_blank" rel="noopener" aria-label="latest release">v1.0.0</a>
       <div class="nav-right">
         <div class="langtoggle" role="group" aria-label="Language">
           <button data-lang="en" class="active">EN</button>
@@ -297,14 +300,13 @@
     <section class="install why" id="install">
       <div class="wrap inner">
         <h2 class="section-title" data-i18n="install.title">Get started</h2>
-        <p class="lead" data-i18n="install.lead">One command installs the dependencies, builds the app, and launches it on your machine.</p>
+        <p class="lead" data-i18n="install.lead">One command installs everything and launches the app on your machine.</p>
         <pre class="codeblock"><span class="c"># macOS / Linux</span>
-git clone https://github.com/VforVitorio/marginalia
-cd marginalia &amp;&amp; scripts/run.sh
+curl -fsSL https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.sh | bash
 
 <span class="c"># Windows (PowerShell)</span>
-scripts\run.ps1</pre>
-        <p class="req" data-i18n="install.req">Requires Python 3.12+, Node 20+ and uv. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.</p>
+irm https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.ps1 | iex</pre>
+        <p class="req" data-i18n="install.req">The installer sets up uv + Python and downloads the prebuilt app — no Node needed. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.</p>
         <div class="cta-row" style="margin-top:1.5rem">
           <a class="btn btn-primary" href="https://github.com/VforVitorio/marginalia#getting-started" target="_blank" rel="noopener" data-i18n="cta.get2">Full instructions on GitHub</a>
         </div>
@@ -353,10 +355,10 @@ scripts\run.ps1</pre>
       <div class="wrap">
         <h2 class="section-title" data-i18n="author.title">Meet the author</h2>
         <div class="author-card">
-          <img class="author-avatar" src="https://avatars.githubusercontent.com/VforVitorio" alt="Víctor Vega" loading="lazy" width="84" height="84" />
-          <div class="author-name">Víctor Vega</div>
+          <img class="author-avatar" src="https://avatars.githubusercontent.com/VforVitorio" alt="VforVitorio" loading="lazy" width="84" height="84" />
+          <div class="author-name">VforVitorio</div>
           <div class="author-role" data-i18n="author.role">Builder of marginalia</div>
-          <p class="author-bio" data-i18n="author.bio">AI &amp; Data Intern at NTT DATA Spain and an Intelligent Systems Engineering student building AI for Formula 1. He made marginalia for himself — to get his own handwritten Kindle Scribe notes into Obsidian.</p>
+          <p class="author-bio" data-i18n="author.bio">Junior AI Engineer at NTT DATA Spain (A Coruña). Bachelor's in Intelligent Systems Engineering (graduated 9.0/10 with 4 Matrículas de Honor; thesis awarded Matrícula de Honor and recommended for a research paper), now on the AEPIA Master's in AI Research. He made marginalia for himself — to get his own handwritten Kindle Scribe notes into Obsidian.</p>
           <div class="author-links">
             <a class="btn btn-ghost btn-sm" href="https://github.com/VforVitorio" target="_blank" rel="noopener">GitHub</a>
           </div>
@@ -368,7 +370,7 @@ scripts\run.ps1</pre>
   <footer>
     <div class="wrap">
       <p class="serif" style="font-size:1.1rem;color:var(--text-2);margin-bottom:.5rem">marginalia</p>
-      <p data-i18n="footer.line">Open source (MIT) · built by Víctor Vega · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.</p>
+      <p data-i18n="footer.line">Open source (MIT) · built by VforVitorio · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.</p>
     </div>
   </footer>
 
@@ -389,9 +391,9 @@ scripts\run.ps1</pre>
         "s1.t": "Import", "s1.d": "Drop a Scribe PDF, or point marginalia at your sync folder.",
         "s2.t": "Review", "s2.d": "Read each page next to the original and fix any OCR slips.",
         "s3.t": "Export", "s3.d": "Write Markdown into your Obsidian vault, structure intact.",
-        "footer.line": "Open source (MIT) · built by Víctor Vega · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.",
-        "install.title": "Get started", "install.lead": "One command installs the dependencies, builds the app, and launches it on your machine.",
-        "install.req": "Requires Python 3.12+, Node 20+ and uv. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.",
+        "footer.line": "Open source (MIT) · built by VforVitorio · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.",
+        "install.title": "Get started", "install.lead": "One command installs everything and launches the app on your machine.",
+        "install.req": "The installer sets up uv + Python and downloads the prebuilt app — no Node needed. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.",
         "cta.get2": "Full instructions on GitHub",
         "faq.title": "FAQ",
         "q1.q": "Is it free?", "q1.a": "Yes — open source under the MIT license, and free to use.",
@@ -400,7 +402,7 @@ scripts\run.ps1</pre>
         "q4.q": "Which devices does it support?", "q4.a": "The Kindle Scribe only, for now. Other devices already have good tools (e.g. Scrybble for reMarkable).",
         "devs.title": "For developers", "devs.body": "Open source (MIT). Python + FastAPI backend, React frontend, with clean module boundaries and a one-command run. Contributions welcome — Scribe-only in scope.", "devs.arch": "Architecture →",
         "author.title": "Meet the author", "author.role": "Builder of marginalia",
-        "author.bio": "AI & Data Intern at NTT DATA Spain and an Intelligent Systems Engineering student building AI for Formula 1. He made marginalia for himself — to get his own handwritten Kindle Scribe notes into Obsidian."
+        "author.bio": "Junior AI Engineer at NTT DATA Spain (A Coruña). Bachelor's in Intelligent Systems Engineering (graduated 9.0/10 with 4 Matrículas de Honor; thesis awarded Matrícula de Honor and recommended for a research paper), now on the AEPIA Master's in AI Research. He made marginalia for himself — to get his own handwritten Kindle Scribe notes into Obsidian."
       },
       es: {
         "hero.title": 'Convierte tus cuadernos manuscritos del Kindle Scribe en <span class="accent">Markdown para Obsidian</span>.',
@@ -417,9 +419,9 @@ scripts\run.ps1</pre>
         "s1.t": "Importa", "s1.d": "Suelta un PDF del Scribe, o apunta marginalia a tu carpeta de sincronización.",
         "s2.t": "Revisa", "s2.d": "Lee cada página junto al original y corrige los fallos del OCR.",
         "s3.t": "Exporta", "s3.d": "Escribe Markdown en tu vault de Obsidian, con la estructura intacta.",
-        "footer.line": "Open source (MIT) · hecho por Víctor Vega · Kindle y Obsidian son marcas de sus dueños; marginalia no está afiliada.",
-        "install.title": "Empieza", "install.lead": "Un comando instala las dependencias, construye la app y la arranca en tu máquina.",
-        "install.req": "Necesita Python 3.12+, Node 20+ y uv. El OCR local además requiere Ollama o LM Studio; el OCR en la nube funciona con una cuenta de Claude o Gemini.",
+        "footer.line": "Open source (MIT) · hecho por VforVitorio · Kindle y Obsidian son marcas de sus dueños; marginalia no está afiliada.",
+        "install.title": "Empieza", "install.lead": "Un comando instala todo y arranca la app en tu máquina.",
+        "install.req": "El instalador configura uv + Python y descarga la app ya compilada — sin Node. El OCR local además requiere Ollama o LM Studio; el OCR en la nube funciona con una cuenta de Claude o Gemini.",
         "cta.get2": "Instrucciones completas en GitHub",
         "faq.title": "Preguntas frecuentes",
         "q1.q": "¿Es gratis?", "q1.a": "Sí — open source con licencia MIT, y gratis.",
@@ -428,7 +430,7 @@ scripts\run.ps1</pre>
         "q4.q": "¿Qué dispositivos soporta?", "q4.a": "Solo el Kindle Scribe, por ahora. Otros dispositivos ya tienen buenas herramientas (p. ej. Scrybble para reMarkable).",
         "devs.title": "Para desarrolladores", "devs.body": "Open source (MIT). Backend Python + FastAPI, frontend React, con fronteras de módulo limpias y arranque de un comando. Contribuciones bienvenidas — alcance solo-Scribe.", "devs.arch": "Arquitectura →",
         "author.title": "Sobre el autor", "author.role": "Creador de marginalia",
-        "author.bio": "AI & Data Intern en NTT DATA España y estudiante de Ingeniería de Sistemas Inteligentes que construye IA para la Fórmula 1. Hizo marginalia para sí mismo — para meter sus propias notas manuscritas del Kindle Scribe en Obsidian."
+        "author.bio": "Junior AI Engineer en NTT DATA España (A Coruña). Grado en Ingeniería de Sistemas Inteligentes (9,0/10 con 4 Matrículas de Honor; TFG con Matrícula de Honor y propuesto para artículo de investigación), ahora en el Máster en Investigación en IA de AEPIA. Hizo marginalia para sí mismo — para meter sus notas manuscritas del Kindle Scribe en Obsidian."
       }
     };
 
@@ -452,6 +454,12 @@ scripts\run.ps1</pre>
     document.querySelectorAll(".langtoggle button").forEach((b) =>
       b.addEventListener("click", () => applyLang(b.dataset.lang))
     );
+
+    // Keep the version badge in sync with the latest GitHub release.
+    fetch("https://api.github.com/repos/VforVitorio/marginalia/releases/latest")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && d.tag_name) document.getElementById("ver").textContent = d.tag_name; })
+      .catch(() => {});
   </script>
 </body>
 </html>
