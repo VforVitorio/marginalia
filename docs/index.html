@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>marginalia — Kindle Scribe handwriting → Obsidian Markdown</title>
+  <meta name="description" content="Turn handwritten Kindle Scribe notebooks into Obsidian Markdown. Local or cloud OCR, side-by-side review, folder-mirroring export. Open source, runs on your machine." />
+  <link rel="canonical" href="https://vforvitorio.github.io/marginalia/" />
+  <meta name="theme-color" content="#100f0d" />
+
+  <!-- Open Graph / Twitter (LinkedIn link preview) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://vforvitorio.github.io/marginalia/" />
+  <meta property="og:title" content="marginalia — Kindle Scribe handwriting → Obsidian Markdown" />
+  <meta property="og:description" content="OCR your handwritten Kindle Scribe notebooks (local or cloud), review side-by-side, and export into your Obsidian vault keeping your folder structure. Open source." />
+  <meta property="og:image" content="https://vforvitorio.github.io/marginalia/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="marginalia — Kindle Scribe handwriting → Obsidian Markdown" />
+  <meta name="twitter:description" content="OCR your handwritten Kindle Scribe notebooks, review, and export to Obsidian. Local or cloud. Open source." />
+  <meta name="twitter:image" content="https://vforvitorio.github.io/marginalia/og-image.png" />
+
+  <link rel="icon" href="logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Newsreader:ital,opsz@1,18..72&display=swap" rel="stylesheet" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "marginalia",
+    "description": "Turn handwritten Kindle Scribe notebooks into Obsidian Markdown via local or cloud OCR, with a side-by-side human review step and folder-mirroring export.",
+    "applicationCategory": "Productivity",
+    "operatingSystem": "Windows, macOS, Linux",
+    "url": "https://github.com/VforVitorio/marginalia",
+    "license": "https://opensource.org/licenses/MIT",
+    "author": { "@type": "Person", "name": "Víctor Vega" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Is marginalia free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is open source under the MIT license and free to use." } },
+      { "@type": "Question", "name": "Does my data stay private?",
+        "acceptedAnswer": { "@type": "Answer", "text": "With local OCR (Qwen3-VL via Ollama or LM Studio) nothing leaves your machine. Cloud OCR (Claude or Gemini) is optional, for the hardest pages." } },
+      { "@type": "Question", "name": "What if the OCR makes mistakes?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Every page gets a side-by-side review: the original image next to the transcription, so you fix any slips before anything is written to your vault." } },
+      { "@type": "Question", "name": "Which devices does it support?",
+        "acceptedAnswer": { "@type": "Answer", "text": "The Kindle Scribe only, for now." } }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #100f0d; --surface: #1c1917; --border: #2a2520; --border-strong: #3a322c;
+      --text: #e8e0d4; --text-2: #b0a898; --text-3: #7a7068;
+      --accent: #c47a60; --accent-light: #d4937a;
+      --max: 1080px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: "DM Sans", system-ui, sans-serif; line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.5rem; }
+    .serif { font-family: "Newsreader", Georgia, serif; font-style: italic; }
+    .accent { color: var(--accent); }
+
+    /* Header */
+    header {
+      position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px);
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav { display: flex; align-items: center; gap: 1rem; height: 60px; }
+    .wordmark { font-family: "Newsreader", Georgia, serif; font-style: italic; font-size: 1.4rem; letter-spacing: -.01em; }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: .6rem; }
+    .langtoggle { display: flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; }
+    .langtoggle button {
+      background: transparent; color: var(--text-3); border: 0; cursor: pointer;
+      font: inherit; font-size: .8rem; padding: .25rem .6rem;
+    }
+    .langtoggle button.active { background: var(--surface); color: var(--text); }
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem; border-radius: 10px;
+      padding: .6rem 1.1rem; font-weight: 500; font-size: .95rem; cursor: pointer;
+      border: 1px solid transparent; transition: filter .15s, background .15s, border-color .15s;
+    }
+    .btn-primary { background: var(--accent); color: var(--bg); }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-ghost { border-color: var(--border-strong); color: var(--text); }
+    .btn-ghost:hover { background: var(--surface); }
+    .btn-sm { padding: .4rem .8rem; font-size: .85rem; }
+
+    /* Hero */
+    .hero { text-align: center; padding: clamp(3rem, 8vw, 6rem) 0 2.5rem; }
+    .eyebrow {
+      display: inline-block; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--accent-light); border: 1px solid var(--border-strong); border-radius: 999px;
+      padding: .3rem .85rem; margin-bottom: 1.5rem;
+    }
+    h1 { font-size: clamp(2rem, 5.5vw, 3.4rem); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; max-width: 18ch; margin: 0 auto; }
+    .hero p.sub { color: var(--text-2); font-size: clamp(1.05rem, 2.4vw, 1.25rem); max-width: 56ch; margin: 1.25rem auto 0; }
+    .cta-row { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+
+    /* Demo */
+    .demo-frame {
+      margin: 3rem auto 0; max-width: 940px; border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; background: var(--surface);
+      box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    }
+    .demo-frame video, .demo-frame img { display: block; width: 100%; height: auto; }
+
+    /* Sections */
+    section { padding: clamp(3rem, 7vw, 5rem) 0; }
+    .section-title { font-size: clamp(1.5rem, 3.5vw, 2rem); font-weight: 600; letter-spacing: -.01em; text-align: center; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-top: 2.5rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+    .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: .5rem; }
+    .card p { color: var(--text-2); font-size: .95rem; }
+    .card .ico { font-size: 1.4rem; margin-bottom: .75rem; display: block; }
+
+    /* Why */
+    .why { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .why .inner { max-width: 60ch; margin: 0 auto; text-align: center; }
+    .why p { color: var(--text-2); font-size: 1.1rem; margin-top: 1rem; }
+
+    /* Steps */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-top: 2.5rem; counter-reset: step; }
+    .step { position: relative; padding-top: .5rem; }
+    .step .n {
+      width: 2rem; height: 2rem; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--accent-light); display: flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: .75rem;
+    }
+    .step h3 { font-size: 1.05rem; margin-bottom: .35rem; }
+    .step p { color: var(--text-2); font-size: .95rem; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 2.5rem 0; color: var(--text-3); font-size: .9rem; text-align: center; }
+    footer a { color: var(--text-2); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* Install */
+    .install .inner { max-width: 60ch; margin: 0 auto; text-align: center; }
+    .install p.lead { color: var(--text-2); margin-top: .85rem; }
+    .codeblock {
+      margin: 1.5rem auto 0; max-width: 640px; text-align: left; background: #0b0a09;
+      border: 1px solid var(--border-strong); border-radius: 12px; padding: 1rem 1.2rem;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9rem;
+      color: var(--text); overflow-x: auto;
+    }
+    .codeblock .c { color: var(--text-3); }
+    .req { color: var(--text-3); font-size: .85rem; margin-top: .9rem; }
+
+    /* FAQ */
+    .faq .list { max-width: 720px; margin: 2rem auto 0; }
+    .faq details {
+      border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+      padding: 0 1.1rem; margin-bottom: .7rem;
+    }
+    .faq summary {
+      cursor: pointer; list-style: none; padding: 1rem 0; font-weight: 500;
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; color: var(--accent); font-size: 1.3rem; line-height: 1; }
+    .faq details[open] summary::after { content: "\2013"; }
+    .faq details p { color: var(--text-2); padding: 0 0 1.1rem; font-size: .95rem; }
+
+    /* Devs */
+    .devs { text-align: center; }
+    .devs p { color: var(--text-2); max-width: 56ch; margin: .85rem auto 0; }
+    .devs .links { display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; margin-top: 1.25rem; font-size: .95rem; }
+
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a href="#" class="wordmark">marginalia</a>
+      <div class="nav-right">
+        <div class="langtoggle" role="group" aria-label="Language">
+          <button data-lang="en" class="active">EN</button>
+          <button data-lang="es">ES</button>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="https://github.com/VforVitorio/marginalia" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <div class="wrap hero">
+      <span class="eyebrow">Kindle Scribe → Obsidian</span>
+      <h1 data-i18n="hero.title">Turn handwritten Kindle Scribe notebooks into <span class="accent">Obsidian Markdown</span>.</h1>
+      <p class="sub" data-i18n="hero.sub">OCR your handwriting — locally or in the cloud — review it side-by-side with the original, and export into your vault keeping your folder structure. Open source, runs on your machine.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/VforVitorio/marginalia" target="_blank" rel="noopener" data-i18n="cta.github">View on GitHub</a>
+        <a class="btn btn-ghost" href="#how" data-i18n="cta.how">How it works</a>
+      </div>
+      <div class="demo-frame">
+        <video autoplay loop muted playsinline poster="og-image.png" aria-label="marginalia demo">
+          <source src="demo/marginalia-demo.mp4" type="video/mp4" />
+          <img src="demo/marginalia-demo.gif" alt="marginalia: a handwritten Kindle Scribe page transcribed to Markdown and exported to Obsidian" />
+        </video>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <section>
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="features.title">What it does</h2>
+        <div class="grid">
+          <div class="card">
+            <span class="ico">🔒</span>
+            <h3 data-i18n="f1.t">Local or cloud OCR</h3>
+            <p data-i18n="f1.d">Qwen3-VL via Ollama or LM Studio, fully private — or Claude/Gemini in the cloud for the hard pages.</p>
+          </div>
+          <div class="card">
+            <span class="ico">👁️</span>
+            <h3 data-i18n="f2.t">Side-by-side review</h3>
+            <p data-i18n="f2.d">Your original page next to the transcription. Fix the OCR before anything touches your vault.</p>
+          </div>
+          <div class="card">
+            <span class="ico">🗂️</span>
+            <h3 data-i18n="f3.t">Folder-mirroring export</h3>
+            <p data-i18n="f3.d">Your Scribe folders become folders and wikilinks in Obsidian.</p>
+          </div>
+          <div class="card">
+            <span class="ico">∑</span>
+            <h3 data-i18n="f4.t">Real Markdown + math</h3>
+            <p data-i18n="f4.d">Headings, tables, callouts, and handwritten math rendered as KaTeX.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why -->
+    <section class="why">
+      <div class="wrap inner">
+        <h2 class="section-title" data-i18n="why.title">Why not the Scribe's built-in convert?</h2>
+        <p data-i18n="why.body">Amazon's "Convert to text" emails you a flat .txt. marginalia drops it straight into Obsidian — folder structure, wikilinks, real Markdown and math — and lets you fix the OCR first. Fully local if you want.</p>
+      </div>
+    </section>
+
+    <!-- How -->
+    <section id="how">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="how.title">How it works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="n">1</div>
+            <h3 data-i18n="s1.t">Import</h3>
+            <p data-i18n="s1.d">Drop a Scribe PDF, or point marginalia at your sync folder.</p>
+          </div>
+          <div class="step">
+            <div class="n">2</div>
+            <h3 data-i18n="s2.t">Review</h3>
+            <p data-i18n="s2.d">Read each page next to the original and fix any OCR slips.</p>
+          </div>
+          <div class="step">
+            <div class="n">3</div>
+            <h3 data-i18n="s3.t">Export</h3>
+            <p data-i18n="s3.d">Write Markdown into your Obsidian vault, structure intact.</p>
+          </div>
+        </div>
+        <div class="cta-row" style="margin-top:2.5rem">
+          <a class="btn btn-primary" href="https://github.com/VforVitorio/marginalia" target="_blank" rel="noopener" data-i18n="cta.get">Get it on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section class="install why" id="install">
+      <div class="wrap inner">
+        <h2 class="section-title" data-i18n="install.title">Get started</h2>
+        <p class="lead" data-i18n="install.lead">One command installs the dependencies, builds the app, and launches it on your machine.</p>
+        <pre class="codeblock"><span class="c"># macOS / Linux</span>
+git clone https://github.com/VforVitorio/marginalia
+cd marginalia &amp;&amp; scripts/run.sh
+
+<span class="c"># Windows (PowerShell)</span>
+scripts\run.ps1</pre>
+        <p class="req" data-i18n="install.req">Requires Python 3.12+, Node 20+ and uv. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.</p>
+        <div class="cta-row" style="margin-top:1.5rem">
+          <a class="btn btn-primary" href="https://github.com/VforVitorio/marginalia#getting-started" target="_blank" rel="noopener" data-i18n="cta.get2">Full instructions on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="faq.title">FAQ</h2>
+        <div class="list">
+          <details>
+            <summary data-i18n="q1.q">Is it free?</summary>
+            <p data-i18n="q1.a">Yes — open source under the MIT license, and free to use.</p>
+          </details>
+          <details>
+            <summary data-i18n="q2.q">Does my data stay private?</summary>
+            <p data-i18n="q2.a">With local OCR, nothing leaves your machine. Cloud OCR (Claude or Gemini) is optional, for the pages a local model struggles with.</p>
+          </details>
+          <details>
+            <summary data-i18n="q3.q">What if the OCR makes mistakes?</summary>
+            <p data-i18n="q3.a">That's what the review step is for: you see the original page next to the text and fix any slips before anything is written to your vault.</p>
+          </details>
+          <details>
+            <summary data-i18n="q4.q">Which devices does it support?</summary>
+            <p data-i18n="q4.a">The Kindle Scribe only, for now. Other devices already have good tools (e.g. Scrybble for reMarkable).</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- For developers -->
+    <section class="devs">
+      <div class="wrap">
+        <h2 class="section-title" data-i18n="devs.title">For developers</h2>
+        <p data-i18n="devs.body">Open source (MIT). Python + FastAPI backend, React frontend, with clean module boundaries and a one-command run. Contributions welcome — Scribe-only in scope.</p>
+        <div class="links">
+          <a href="https://github.com/VforVitorio/marginalia" target="_blank" rel="noopener">GitHub →</a>
+          <a href="https://github.com/VforVitorio/marginalia/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener" data-i18n="devs.arch">Architecture →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p class="serif" style="font-size:1.1rem;color:var(--text-2);margin-bottom:.5rem">marginalia</p>
+      <p data-i18n="footer.line">Open source (MIT) · built by Víctor Vega · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.</p>
+    </div>
+  </footer>
+
+  <script>
+    const I18N = {
+      en: {
+        "hero.title": 'Turn handwritten Kindle Scribe notebooks into <span class="accent">Obsidian Markdown</span>.',
+        "hero.sub": "OCR your handwriting — locally or in the cloud — review it side-by-side with the original, and export into your vault keeping your folder structure. Open source, runs on your machine.",
+        "cta.github": "View on GitHub", "cta.how": "How it works", "cta.get": "Get it on GitHub",
+        "features.title": "What it does",
+        "f1.t": "Local or cloud OCR", "f1.d": "Qwen3-VL via Ollama or LM Studio, fully private — or Claude/Gemini in the cloud for the hard pages.",
+        "f2.t": "Side-by-side review", "f2.d": "Your original page next to the transcription. Fix the OCR before anything touches your vault.",
+        "f3.t": "Folder-mirroring export", "f3.d": "Your Scribe folders become folders and wikilinks in Obsidian.",
+        "f4.t": "Real Markdown + math", "f4.d": "Headings, tables, callouts, and handwritten math rendered as KaTeX.",
+        "why.title": "Why not the Scribe's built-in convert?",
+        "why.body": "Amazon's “Convert to text” emails you a flat .txt. marginalia drops it straight into Obsidian — folder structure, wikilinks, real Markdown and math — and lets you fix the OCR first. Fully local if you want.",
+        "how.title": "How it works",
+        "s1.t": "Import", "s1.d": "Drop a Scribe PDF, or point marginalia at your sync folder.",
+        "s2.t": "Review", "s2.d": "Read each page next to the original and fix any OCR slips.",
+        "s3.t": "Export", "s3.d": "Write Markdown into your Obsidian vault, structure intact.",
+        "footer.line": "Open source (MIT) · built by Víctor Vega · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.",
+        "install.title": "Get started", "install.lead": "One command installs the dependencies, builds the app, and launches it on your machine.",
+        "install.req": "Requires Python 3.12+, Node 20+ and uv. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.",
+        "cta.get2": "Full instructions on GitHub",
+        "faq.title": "FAQ",
+        "q1.q": "Is it free?", "q1.a": "Yes — open source under the MIT license, and free to use.",
+        "q2.q": "Does my data stay private?", "q2.a": "With local OCR, nothing leaves your machine. Cloud OCR (Claude or Gemini) is optional, for the pages a local model struggles with.",
+        "q3.q": "What if the OCR makes mistakes?", "q3.a": "That's what the review step is for: you see the original page next to the text and fix any slips before anything is written to your vault.",
+        "q4.q": "Which devices does it support?", "q4.a": "The Kindle Scribe only, for now. Other devices already have good tools (e.g. Scrybble for reMarkable).",
+        "devs.title": "For developers", "devs.body": "Open source (MIT). Python + FastAPI backend, React frontend, with clean module boundaries and a one-command run. Contributions welcome — Scribe-only in scope.", "devs.arch": "Architecture →"
+      },
+      es: {
+        "hero.title": 'Convierte tus cuadernos manuscritos del Kindle Scribe en <span class="accent">Markdown para Obsidian</span>.',
+        "hero.sub": "Haz OCR de tu letra —en local o en la nube—, revísala junto a la imagen original y expórtala a tu vault respetando tu estructura de carpetas. Open source, corre en tu máquina.",
+        "cta.github": "Ver en GitHub", "cta.how": "Cómo funciona", "cta.get": "Consíguelo en GitHub",
+        "features.title": "Qué hace",
+        "f1.t": "OCR local o en la nube", "f1.d": "Qwen3-VL con Ollama o LM Studio, 100% privado — o Claude/Gemini en la nube para las páginas difíciles.",
+        "f2.t": "Revisión lado a lado", "f2.d": "Tu página original junto a la transcripción. Corrige el OCR antes de que nada toque tu vault.",
+        "f3.t": "Exporta espejando carpetas", "f3.d": "Tus carpetas del Scribe se convierten en carpetas y wikilinks en Obsidian.",
+        "f4.t": "Markdown de verdad + mates", "f4.d": "Encabezados, tablas, callouts y mates manuscritas renderizadas como KaTeX.",
+        "why.title": "¿Por qué no el convertir nativo del Scribe?",
+        "why.body": "El “convertir a texto” de Amazon te manda un .txt plano. marginalia lo mete directo en Obsidian —estructura de carpetas, wikilinks, Markdown y mates de verdad— y te deja corregir el OCR antes. 100% local si quieres.",
+        "how.title": "Cómo funciona",
+        "s1.t": "Importa", "s1.d": "Suelta un PDF del Scribe, o apunta marginalia a tu carpeta de sincronización.",
+        "s2.t": "Revisa", "s2.d": "Lee cada página junto al original y corrige los fallos del OCR.",
+        "s3.t": "Exporta", "s3.d": "Escribe Markdown en tu vault de Obsidian, con la estructura intacta.",
+        "footer.line": "Open source (MIT) · hecho por Víctor Vega · Kindle y Obsidian son marcas de sus dueños; marginalia no está afiliada.",
+        "install.title": "Empieza", "install.lead": "Un comando instala las dependencias, construye la app y la arranca en tu máquina.",
+        "install.req": "Necesita Python 3.12+, Node 20+ y uv. El OCR local además requiere Ollama o LM Studio; el OCR en la nube funciona con una cuenta de Claude o Gemini.",
+        "cta.get2": "Instrucciones completas en GitHub",
+        "faq.title": "Preguntas frecuentes",
+        "q1.q": "¿Es gratis?", "q1.a": "Sí — open source con licencia MIT, y gratis.",
+        "q2.q": "¿Mis datos se quedan privados?", "q2.a": "Con OCR local, nada sale de tu máquina. El OCR en la nube (Claude o Gemini) es opcional, para las páginas que el modelo local no clava.",
+        "q3.q": "¿Y si el OCR se equivoca?", "q3.a": "Para eso está la revisión: ves la página original junto al texto y corriges los fallos antes de que nada toque tu vault.",
+        "q4.q": "¿Qué dispositivos soporta?", "q4.a": "Solo el Kindle Scribe, por ahora. Otros dispositivos ya tienen buenas herramientas (p. ej. Scrybble para reMarkable).",
+        "devs.title": "Para desarrolladores", "devs.body": "Open source (MIT). Backend Python + FastAPI, frontend React, con fronteras de módulo limpias y arranque de un comando. Contribuciones bienvenidas — alcance solo-Scribe.", "devs.arch": "Arquitectura →"
+      }
+    };
+
+    function applyLang(lang) {
+      const dict = I18N[lang] || I18N.en;
+      document.documentElement.lang = lang;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (dict[key]) el.innerHTML = dict[key];
+      });
+      document.querySelectorAll(".langtoggle button").forEach((b) =>
+        b.classList.toggle("active", b.dataset.lang === lang)
+      );
+      try { localStorage.setItem("marginalia.lang", lang); } catch (e) {}
+    }
+
+    const saved = (() => { try { return localStorage.getItem("marginalia.lang"); } catch (e) { return null; } })();
+    const browserEs = (navigator.language || "en").toLowerCase().startsWith("es");
+    applyLang(saved || (browserEs ? "es" : "en"));
+
+    document.querySelectorAll(".langtoggle button").forEach((b) =>
+      b.addEventListener("click", () => applyLang(b.dataset.lang))
+    );
+  </script>
+
+  <!-- Cloudflare Web Analytics — replace the token below with your vforvitorio.github.io site token -->
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "REPLACE_WITH_CLOUDFLARE_TOKEN"}'></script>
+</body>
+</html>

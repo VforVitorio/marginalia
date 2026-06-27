@@ -21,6 +21,13 @@ providers.toml
 
 # --- tooling ---
 /.code-review-graph/
+# code-review-graph + per-editor MCP config (machine-specific; recreate with `code-review-graph install`)
+.mcp.json
+.opencode.json
+.claude/settings.json
+.claude/skills/*.md
+# rtk per-project config (recreate with `rtk init`)
+.rtk/
 .claude/settings.local.json
 .claude/worktrees/
 .env

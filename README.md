@@ -100,6 +100,8 @@ PRs welcome, Scribe-only. Issues about other devices will be closed — not out 
 
 ## FAQ
 
+**Why not just use the Scribe's built-in "Convert to text"?** Amazon's conversion emails you a flat `.txt`. marginalia drops the result straight into Obsidian — your Scribe folder structure mirrored, optional wikilinks, real Markdown (headings, tables, callouts, KaTeX math) — and lets you fix the OCR before it ever touches your vault. It can also run fully local, so nothing leaves your machine.
+
 **Does it work with reMarkable, iPad, etc.?** Not yet, and not for the MVP. This is for the Kindle Scribe. If you use another device, there are better tools for it (Scrybble for reMarkable, Apple Importer for Apple Notes).
 
 **Do I need an API key?** For local OCR (Ollama), no. For cloud, you either use your Claude subscription (no API key) or a free Gemini key from AI Studio.
