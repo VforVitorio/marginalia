@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0](https://github.com/VforVitorio/marginalia/compare/v1.0.0...v1.1.0) (2026-06-27)
+
+
+### Features
+
+* **install:** one-command installer (no Node) + landing install/version ([64152ce](https://github.com/VforVitorio/marginalia/commit/64152ce7bb57e36853e8c5245ee54e0de169a111))
+* **install:** one-command installer + landing install/version badge ([457be18](https://github.com/VforVitorio/marginalia/commit/457be18aed46b9ca672a291da4faff02e5a6390c))
+
+
+### Documentation
+
+* **landing:** EN 'Distinction' wording + working-while-studying note ([43bfea3](https://github.com/VforVitorio/marginalia/commit/43bfea3dfe4f7faecde0b4b6440ae7dd11515743))
+* **landing:** English distinction wording + working-while-studying note ([9f328a8](https://github.com/VforVitorio/marginalia/commit/9f328a8ef81f482fa9d9bb97e06a3b9a43aca5a5))
+* **landing:** SVG icons + Meet the author ([ab11a4b](https://github.com/VforVitorio/marginalia/commit/ab11a4b2fb30015409303a9e86ab4d71837034e6))
+* **landing:** SVG icons, Meet the author section, drop CF beacon ([fd50a86](https://github.com/VforVitorio/marginalia/commit/fd50a86a97a291bebfe2fcb9cb0b10a86b1e4712))
+* product landing page (GitHub Pages) + README FAQ ([8a55545](https://github.com/VforVitorio/marginalia/commit/8a5554559fa95c6d512adcb664044f30c58fcf71))
+* product landing page (GitHub Pages) + README FAQ ([afcba4a](https://github.com/VforVitorio/marginalia/commit/afcba4aa46cbf933aca20726c044512856db0453))
+
 ## [1.0.0](https://github.com/VforVitorio/marginalia/compare/v0.1.0...v1.0.0) (2026-06-24)
 
 
