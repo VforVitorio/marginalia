@@ -1,0 +1,16 @@
+# marginalia
+
+> Turn handwritten Kindle Scribe notebooks (PDF) into Obsidian Markdown via local or cloud OCR, with a side-by-side human review step and folder-mirroring export. Open source (MIT), runs locally.
+
+## Links
+- GitHub repository: https://github.com/VforVitorio/marginalia
+- Landing page: https://vforvitorio.github.io/marginalia/
+
+## What it does
+- OCR handwriting locally (Qwen3-VL via Ollama / LM Studio) or in the cloud (Claude / Gemini).
+- Review each page side-by-side with the original image before exporting.
+- Export Markdown into an Obsidian vault, mirroring the Kindle Scribe folder structure (optional wikilinks).
+- Renders handwritten math as KaTeX; supports GitHub-flavoured tables and callouts.
+
+## Notes
+- Kindle Scribe only (for now). Single-user, local desktop-style app.
