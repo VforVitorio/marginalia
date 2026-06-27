@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1](https://github.com/VforVitorio/marginalia/compare/v1.1.0...v1.1.1) (2026-06-27)
+
+
+### Documentation
+
+* **landing:** terminal install boxes with copy button ([d27f282](https://github.com/VforVitorio/marginalia/commit/d27f2829bea4906df635f5bc1b760ff434d255c7))
+* **landing:** terminal-style install boxes with copy button ([f3ad2a6](https://github.com/VforVitorio/marginalia/commit/f3ad2a6ac5ad5caaf97555d7aef162bbc5c582b8))
+* **landing:** wrap install command + honours wording ([4b9f06c](https://github.com/VforVitorio/marginalia/commit/4b9f06c60f914384fd5949ab037e7deb31c3d12a))
+* **landing:** wrap install command + refine EN honours wording ([517b0f6](https://github.com/VforVitorio/marginalia/commit/517b0f6511ddd16829c69f2c3ddb6bf72bc631bb))
+
 ## [1.1.0](https://github.com/VforVitorio/marginalia/compare/v1.0.0...v1.1.0) (2026-06-27)
 
 
