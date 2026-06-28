@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/VforVitorio/marginalia/compare/v1.1.1...v1.1.2) (2026-06-28)
+
+
+### Documentation
+
+* **landing:** normalize author bio to canonical wording ([cbfdfd2](https://github.com/VforVitorio/marginalia/commit/cbfdfd256654ae03f017557c2d3015b2dbde0bc6))
+* **landing:** normalize author bio to canonical wording ([362e64c](https://github.com/VforVitorio/marginalia/commit/362e64c64b8d26d8c7ddeee9867174dae709760c))
+
 ## [1.1.1](https://github.com/VforVitorio/marginalia/compare/v1.1.0...v1.1.1) (2026-06-27)
 
 
