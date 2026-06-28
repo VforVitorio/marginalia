@@ -1,10 +1,17 @@
 name: release-assets
 
-# Build the frontend and attach it to each published release as frontend-dist.zip,
-# so the installer (scripts/install.*) can fetch it and end users never need Node.
+# Manual repair: build the frontend and (re)attach it to a release as
+# frontend-dist.zip, so the installer (scripts/install.*) can fetch it and end
+# users never need Node. The automatic path lives in release-please.yml (the same
+# job that creates the release); this workflow is a manual fallback to re-attach
+# the asset to any tag, e.g. if a release ever ends up without it.
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach frontend-dist.zip to (e.g. v1.1.2)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -28,4 +37,4 @@ jobs:
       - name: Attach to the release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" frontend-dist.zip --clobber
+        run: gh release upload "${{ inputs.tag }}" frontend-dist.zip --clobber
