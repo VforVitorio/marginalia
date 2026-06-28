@@ -13,6 +13,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # When release-please publishes a release it uses GITHUB_TOKEN, and GitHub
+      # does NOT fire the `release: published` event for token-created releases
+      # (recursion guard). So we build the frontend and attach frontend-dist.zip
+      # here, in the same job, so the installer (scripts/install.*) always has it.
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+
+      - uses: actions/setup-node@v4
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: npm ci && npm run build
+        working-directory: frontend
+
+      - name: Attach frontend-dist.zip to the release
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd frontend && zip -r ../frontend-dist.zip dist
+          cd .. && gh release upload "${{ steps.release.outputs.tag_name }}" frontend-dist.zip --clobber
