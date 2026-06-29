@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/VforVitorio/marginalia/compare/v1.1.2...v1.1.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* **landing:** smooth author bio (from computer vision to LLM behavior) ([d6098e9](https://github.com/VforVitorio/marginalia/commit/d6098e9c04e655f526efaac9404710616da6d59f))
+* **landing:** smooth author bio (from computer vision to LLM behavior) ([ade1bf8](https://github.com/VforVitorio/marginalia/commit/ade1bf8a960fe1bd7380def067fd5da7e0e11522))
+
 ## [1.1.2](https://github.com/VforVitorio/marginalia/compare/v1.1.1...v1.1.2) (2026-06-28)
 
 
