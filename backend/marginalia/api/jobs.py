@@ -19,17 +19,32 @@ from marginalia.api.schemas import (
     JobOut,
     JobPageOut,
     PageEdit,
+    ScannedPdfOut,
+    ScanOut,
 )
 from marginalia.api.sse import sse_stream
 from marginalia.config import load_settings
 from marginalia.export.service import export_notes
 from marginalia.ingest.pdf import Notebook, load_notebook, render_pdf
+from marginalia.ingest.scan import scan_pdfs
 from marginalia.jobs.service import run_ocr
 from marginalia.jobs.store import JobRecord, JobStore
 from marginalia.ocr.engine import OCREngine
 from marginalia.structure.mapper import NoteSource, Strategy
 
 router = APIRouter()
+
+
+@router.get("/scan")
+def scan() -> ScanOut:
+    """List the PDFs under the configured Scribe scan folder, for the synced-folder import flow.
+
+    Feeds the Import step: each entry's ``rel_path`` is what a later ``POST /jobs`` sends back to
+    ingest that notebook (and carries the folder hierarchy to export). 400 if no scan folder is set.
+    """
+    root = _scan_root()
+    pdfs = [ScannedPdfOut(rel_path=ref.rel_path, name=PurePosixPath(ref.rel_path).stem) for ref in scan_pdfs(root)]
+    return ScanOut(pdfs=pdfs)
 
 
 @router.post("/jobs")
