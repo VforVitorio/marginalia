@@ -288,6 +288,7 @@ export default function App() {
                 settings={settings}
                 onBack={handleBackToReview}
                 onDone={handleDone}
+                onSettingsChange={setSettings}
               />
             )}
           </div>
