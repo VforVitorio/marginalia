@@ -105,22 +105,45 @@ def _host_port(base_url: str, default_port: int) -> tuple[str, int]:
     return (parts.hostname or lms_bridge.DEFAULT_HOST, parts.port or default_port)
 
 
+_PULL_TIMEOUT = httpx.Timeout(connect=5.0, read=60.0, write=10.0, pool=5.0)
+
+
 async def pull_model(provider: ProviderConfig, model: str) -> AsyncGenerator[dict, None]:
-    """Stream progress while Ollama pulls a model. Yields ``{status, percent}`` events."""
+    """Stream progress while Ollama pulls a model.
+
+    Yields ``{type: "pull_progress", status, percent}`` per NDJSON line, using the same
+    ``{type: ...}`` envelope as the job/OCR stream (``jobs/service.py``) so the frontend can share
+    one SSE frame parser (issue #138 / AR-02).
+
+    A failed pull (bad model name, disk full, ...) surfaces as an Ollama ``{"error": "..."}`` line
+    mid-stream, and a dead/unreachable Ollama surfaces as an ``httpx`` exception — either raised on
+    connect or mid-stream, *after* the 200 response has already been sent (FastAPI's
+    ``StreamingResponse`` flushes headers on the first chunk). Previously both cases were silently
+    dropped: the generator just stopped, and the client read the truncated stream as success
+    (issue #138 / BE-04). Both are now caught here and turned into one terminal ``{type: "error"}``
+    frame the client can act on. ``timeout=None`` on the transport is also replaced with a bounded
+    read timeout — a wedged Ollama would otherwise hold the request open forever.
+    """
     base = (provider.base_url or "").rstrip("/").removesuffix("/v1")  # Ollama's pull API is at the root
-    async with (
-        httpx.AsyncClient(timeout=None) as client,
-        client.stream("POST", f"{base}/api/pull", json={"name": model}) as resp,
-    ):
-        resp.raise_for_status()
-        async for line in resp.aiter_lines():
-            if not line.strip():
-                continue
-            try:
-                data = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            yield {"status": data.get("status", ""), "percent": _percent(data)}
+    try:
+        async with (
+            httpx.AsyncClient(timeout=_PULL_TIMEOUT) as client,
+            client.stream("POST", f"{base}/api/pull", json={"name": model}) as resp,
+        ):
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if "error" in data:
+                    yield {"type": "error", "message": str(data["error"])}
+                    return
+                yield {"type": "pull_progress", "status": data.get("status", ""), "percent": _percent(data)}
+    except httpx.HTTPError as exc:
+        yield {"type": "error", "message": f"Could not pull '{model}': {exc}"}
 
 
 def _percent(data: dict) -> int | None:

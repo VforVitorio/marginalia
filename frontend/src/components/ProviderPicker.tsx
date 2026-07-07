@@ -19,19 +19,35 @@ import {
   setProviderKey,
   type ProviderState,
   type ProviderStatus,
+  type PullEvent,
 } from "../api/client";
 import { PanelError } from "./PanelError";
+import { Spinner } from "./Spinner";
 
 interface ProviderPickerProps {
   status: ProviderStatus[] | null;
   active: string | null;
   loading: boolean;
-  onSelect: (providerId: string, model?: string) => Promise<void>;
+  /** True while a provider/model selection is in flight (App.handleProviderSelect). */
+  selecting: boolean;
+  /** Error from the last failed selection, or null. Cleared on the next attempt. */
+  selectError: string | null;
+  /** Resolves to whether the selection succeeded, so the popover only closes on success. */
+  onSelect: (providerId: string, model?: string) => Promise<boolean>;
   onRefresh: () => Promise<void>;
 }
 
-export function ProviderPicker({ status, active, loading, onSelect, onRefresh }: ProviderPickerProps) {
+export function ProviderPicker({
+  status,
+  active,
+  loading,
+  selecting,
+  selectError,
+  onSelect,
+  onRefresh,
+}: ProviderPickerProps) {
   const [open, setOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const activeProvider = status?.find((p) => p.id === active) ?? null;
 
@@ -46,6 +62,26 @@ export function ProviderPicker({ status, active, loading, onSelect, onRefresh }:
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // Refetch status every time the popover opens — otherwise a stale "unreachable"
+  // dot never recovers once the runtime comes up after the app already loaded.
+  // Deliberately depends on [open] only: onRefresh's identity changes on every
+  // App re-render (it's not memoised there), and including it here would refire
+  // this effect — and re-fetch — on every unrelated App state change.
+  useEffect(() => {
+    if (!open) return;
+    void handleRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
@@ -71,27 +107,51 @@ export function ProviderPicker({ status, active, loading, onSelect, onRefresh }:
         <ChevronIcon open={open} />
       </button>
 
-      {open && status && (
+      {open && (
         <div
           id="provider-panel"
           aria-label="OCR providers"
+          aria-busy={refreshing || selecting}
           className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-default bg-surface shadow-warm-lg overflow-hidden"
         >
-          <ul className="py-1 max-h-[26rem] overflow-y-auto">
-            {status.map((provider) => (
-              <li key={provider.id}>
-                <ProviderRow
-                  provider={provider}
-                  isActive={provider.id === active}
-                  onSelect={async (model) => {
-                    await onSelect(provider.id, model);
-                    setOpen(false);
-                  }}
-                  onRefresh={onRefresh}
-                />
-              </li>
-            ))}
-          </ul>
+          <PanelHeader refreshing={refreshing} selecting={selecting} onRefresh={handleRefresh} />
+
+          {selectError && (
+            <div className="px-3 pt-2">
+              <PanelError message={selectError} />
+            </div>
+          )}
+
+          {status ? (
+            <ul className={`py-1 max-h-[26rem] overflow-y-auto ${selecting ? "opacity-60" : ""}`}>
+              {status.map((provider) => (
+                <li key={provider.id}>
+                  <ProviderRow
+                    provider={provider}
+                    isActive={provider.id === active}
+                    disabled={selecting}
+                    onSelect={async (model) => {
+                      const ok = await onSelect(provider.id, model);
+                      if (ok) setOpen(false);
+                    }}
+                    onRefresh={onRefresh}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-4 py-6 flex flex-col items-center gap-2 text-center">
+              <p className="text-xs text-secondary">Cannot reach the backend — is it running?</p>
+              <button
+                type="button"
+                className="btn-secondary text-xs px-3 py-1.5"
+                onClick={() => void handleRefresh()}
+                disabled={refreshing}
+              >
+                {refreshing ? "Retrying…" : "Retry"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -112,11 +172,13 @@ type ExpandedPanel = "models" | "load" | "key" | "pull";
 interface ProviderRowProps {
   provider: ProviderStatus;
   isActive: boolean;
+  /** True while another selection is already in flight — disables every action on the row. */
+  disabled: boolean;
   onSelect: (model?: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
-function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowProps) {
+function ProviderRow({ provider, isActive, disabled, onSelect, onRefresh }: ProviderRowProps) {
   const [expanded, setExpanded] = useState<ExpandedPanel | null>(null);
 
   const isOllama = provider.id === "ollama";
@@ -127,6 +189,7 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
   // Any provider is selectable — picking it makes it active; the dot + Load/Pull/Add-key
   // actions tell the user what's still needed before OCR will work.
   async function handleRowClick() {
+    if (disabled) return;
     if (provider.models.length > 1) {
       setExpanded((e) => (e === "models" ? null : "models"));
     } else {
@@ -140,8 +203,9 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
         <span className={`status-dot ${dotClass(provider.state)} flex-shrink-0`} />
         <ProviderKindIcon kind={provider.kind} />
         <button
-          className="flex-1 min-w-0 text-left"
+          className="flex-1 min-w-0 text-left disabled:opacity-60"
           onClick={handleRowClick}
+          disabled={disabled}
         >
           <div className="text-sm font-medium text-primary truncate flex items-center gap-1.5">
             {provider.display_name}
@@ -155,18 +219,21 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
         {canLoad && (
           <RowAction
             label="Load"
+            disabled={disabled}
             onClick={() => setExpanded((e) => (e === "load" ? null : "load"))}
           />
         )}
         {canPull && (
           <RowAction
             label="Pull"
+            disabled={disabled}
             onClick={() => setExpanded((e) => (e === "pull" ? null : "pull"))}
           />
         )}
         {canEnterKey && (
           <RowAction
             label="Add key"
+            disabled={disabled}
             onClick={() => setExpanded((e) => (e === "key" ? null : "key"))}
           />
         )}
@@ -176,6 +243,7 @@ function ProviderRow({ provider, isActive, onSelect, onRefresh }: ProviderRowPro
         <ModelList
           models={provider.models}
           current={provider.current_model}
+          disabled={disabled}
           onSelect={async (model) => {
             setExpanded(null);
             await onSelect(model);
@@ -248,9 +316,9 @@ function LoadPanel({ providerId, onLoaded }: { providerId: string; onLoaded: (mo
   return (
     <div className="px-3 pb-2.5 pt-0.5 border-t border-default bg-surface">
       <p className="text-2xs text-muted py-1 leading-relaxed">
-        Open the <strong className="font-medium text-secondary">LM Studio app</strong> first (or enable
-        “Run server on login” in its settings) — it can’t be started automatically. Then your downloaded
-        models appear here; pick one to load it.
+        marginalia will try to start <strong className="font-medium text-secondary">LM Studio</strong> headless
+        and load the model — this can take up to ~2 minutes. If that fails, open the LM Studio app once (or
+        enable “Run server on login” in its settings), then pick a downloaded model below.
       </p>
       {error && <PanelError message={error} />}
       {models === null && !error && <p className="text-2xs text-muted italic py-1">Looking for models…</p>}
@@ -267,7 +335,10 @@ function LoadPanel({ providerId, onLoaded }: { providerId: string; onLoaded: (mo
             >
               <span className="flex-1 min-w-0 truncate text-primary">{model}</span>
               {loadingModel === model ? (
-                <span className="text-2xs text-muted">Loading…</span>
+                <span className="text-2xs text-muted flex items-center gap-1">
+                  <Spinner size="sm" label={`Loading ${model}…`} />
+                  Loading — can take ~2 min…
+                </span>
               ) : (
                 <span className="text-2xs text-accent">Load →</span>
               )}
@@ -338,20 +409,25 @@ function PullPanel({
 }) {
   const [model, setModel] = useState("");
   const [pulling, setPulling] = useState(false);
+  const [progress, setProgress] = useState<PullEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handlePull() {
     const target = model.trim();
     if (!target) return;
     setPulling(true);
+    setProgress(null);
     setError(null);
     try {
-      await pullModel(providerId, target);
+      await pullModel(providerId, target, (event) => {
+        if (event.type === "pull_progress") setProgress(event);
+      });
       await onPulled(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pull failed.");
     } finally {
       setPulling(false);
+      setProgress(null);
     }
   }
 
@@ -396,10 +472,39 @@ function PullPanel({
           {pulling ? "Pulling…" : "Pull"}
         </button>
       </div>
-      {pulling && (
-        <p className="text-2xs text-muted italic">Pulling… this can take a while.</p>
-      )}
+      {pulling && <PullProgress event={progress} />}
       {error && <PanelError message={error} />}
+    </div>
+  );
+}
+
+/** Live status line + bar for a running pull — replaces the old static "Pulling…" text (issue #138). */
+function PullProgress({ event }: { event: PullEvent | null }) {
+  const percent = event?.type === "pull_progress" ? event.percent : null;
+  const status = event?.type === "pull_progress" && event.status ? event.status : "Pulling…";
+
+  return (
+    <div className="flex flex-col gap-1" aria-live="polite">
+      <p className="text-2xs text-muted italic tabular-nums">
+        {status}
+        {percent != null ? ` · ${percent}%` : ""}
+      </p>
+      <div
+        role="progressbar"
+        aria-label="Model pull progress"
+        aria-valuenow={percent ?? undefined}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-1 w-full rounded-full bg-surface-2 overflow-hidden"
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{
+            width: `${percent ?? 0}%`,
+            backgroundColor: "var(--color-accent)",
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -409,20 +514,22 @@ function PullPanel({
 interface ModelListProps {
   models: string[];
   current: string | null;
+  disabled: boolean;
   onSelect: (model: string) => Promise<void>;
 }
 
-function ModelList({ models, current, onSelect }: ModelListProps) {
+function ModelList({ models, current, disabled, onSelect }: ModelListProps) {
   return (
     <ul className="border-t border-default bg-surface py-1">
       {models.map((model) => (
         <li key={model}>
           <button
             className={[
-              "w-full text-left px-3 py-2 text-xs transition-colors",
+              "w-full text-left px-3 py-2 text-xs transition-colors disabled:opacity-50",
               model === current ? "text-accent bg-surface-2" : "text-primary hover:bg-surface-2",
             ].join(" ")}
             onClick={() => onSelect(model)}
+            disabled={disabled}
           >
             {model}
           </button>
@@ -432,13 +539,45 @@ function ModelList({ models, current, onSelect }: ModelListProps) {
   );
 }
 
+// ── Panel header (title + refresh, used for both the live list and the empty state) ──
+
+function PanelHeader({
+  refreshing,
+  selecting,
+  onRefresh,
+}: {
+  refreshing: boolean;
+  selecting: boolean;
+  onRefresh: () => Promise<void>;
+}) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2 border-b border-default">
+      <span className="text-2xs font-medium text-muted uppercase tracking-wide flex items-center gap-1.5">
+        OCR providers
+        {selecting && <Spinner size="sm" label="Selecting provider…" />}
+      </span>
+      <button
+        type="button"
+        className="btn-ghost p-1 rounded-md disabled:opacity-50"
+        onClick={() => void onRefresh()}
+        disabled={refreshing}
+        aria-label="Refresh provider status"
+        title="Refresh provider status"
+      >
+        <RefreshIcon spinning={refreshing} />
+      </button>
+    </div>
+  );
+}
+
 // ── Small bits ───────────────────────────────────────────────────────────────────
 
-function RowAction({ label, onClick }: { label: string; onClick: () => void }) {
+function RowAction({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button
-      className="btn-ghost text-2xs py-1 px-2 flex-shrink-0"
+      className="btn-ghost text-2xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
       onClick={onClick}
+      disabled={disabled}
     >
       {label}
     </button>
@@ -499,6 +638,21 @@ function ChevronIcon({ open }: { open: boolean }) {
       fill="none"
     >
       <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ spinning }: { spinning: boolean }) {
+  return (
+    <svg
+      className={`w-3.5 h-3.5 text-muted ${spinning ? "animate-spin" : ""}`}
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M2 7a5 5 0 005 5 5 5 0 004.5-2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 7a5 5 0 00-5-5 5 5 0 00-4.5 2.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 4V7h-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
