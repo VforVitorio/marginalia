@@ -35,6 +35,17 @@ def test_export_mirror_only_skips_index(tmp_path) -> None:
     assert written == [vault / "a.md"]
 
 
+def test_wikilinks_index_merges_across_exports(tmp_path) -> None:
+    """Exporting a second notebook into a folder keeps the first notebook's index link (BE-06)."""
+    vault = tmp_path / "vault"
+    export_notes([NoteSource(name="A", source_rel_dir="uni", pages_markdown=["a"])], ["wikilinks"], vault)
+    export_notes([NoteSource(name="B", source_rel_dir="uni", pages_markdown=["b"])], ["wikilinks"], vault)
+
+    index_text = (vault / "uni" / "uni.md").read_text(encoding="utf-8")
+    assert "[[A]]" in index_text
+    assert "[[B]]" in index_text
+
+
 def test_export_rejects_path_traversal(tmp_path) -> None:
     vault = tmp_path / "vault"
     outside = tmp_path / "outside.md"
