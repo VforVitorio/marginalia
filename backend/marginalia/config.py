@@ -10,11 +10,14 @@ use": ``providers.toml`` is seed/credentials, ``settings.json`` is written by th
 
 from __future__ import annotations
 
+import logging
 import os
 import tomllib
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_home_dir(env_value: str | None) -> Path | None:
@@ -90,10 +93,23 @@ def resolve_providers(settings: Settings) -> list[ProviderConfig]:
 
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
-    """Read the user's choices. Defaults if nothing has been saved yet."""
+    """Read the user's choices. Defaults if nothing has been saved yet, or if the file is corrupt.
+
+    BE-12: every route that touches settings calls this, so a malformed ``settings.json`` (a crash
+    mid-write predating ``write_text_atomic``, or manual editing) must not 500 every endpoint in the
+    app. ``model_validate_json`` raises ``ValidationError`` for both invalid JSON syntax and schema
+    mismatches (pydantic v2 wraps the JSON parser's errors the same way), so catching just that one
+    exception type covers both failure shapes. Losing the user's saved choices is an acceptable
+    trade for keeping the app usable — the alternative is bricking it until they hand-delete a file
+    they were promised never to touch.
+    """
     if not path.exists():
         return Settings()
-    return Settings.model_validate_json(path.read_text(encoding="utf-8"))
+    try:
+        return Settings.model_validate_json(path.read_text(encoding="utf-8"))
+    except ValidationError:
+        logger.warning("Corrupt settings.json at %s — falling back to defaults.", path)
+        return Settings()
 
 
 def save_settings(settings: Settings, path: Path = SETTINGS_PATH) -> None:

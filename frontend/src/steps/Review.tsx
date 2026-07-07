@@ -20,6 +20,7 @@ import {
   type PageState,
 } from "../api/client";
 import { useJobStream, type SseEvent } from "../lib/sse";
+import { applyPageEvent } from "../lib/reviewReducer";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { MarkdownEditor } from "../components/MarkdownEditor";
 import { Spinner } from "../components/Spinner";
@@ -108,12 +109,13 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     if (deltaBuffer.current.size === 0) return;
     const updates = deltaBuffer.current;
     deltaBuffer.current = new Map();
-    setPages((prev) =>
-      prev.map((p) => {
-        const extra = updates.get(p.index);
-        return extra ? { ...p, markdown: p.markdown + extra } : p;
-      }),
-    );
+    setPages((prev) => {
+      let next = prev;
+      for (const [index, text] of updates) {
+        next = applyPageEvent(next, { type: "page_delta", index, text });
+      }
+      return next;
+    });
   }, []);
 
   // Flush synchronously (cancelling any scheduled frame first) before events
@@ -134,11 +136,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
         // Mark the page streaming, but do NOT move the user's view — auto-jumping
         // pages mid-OCR (or while they're editing) is disorienting. They navigate
         // via the tab bar; the dots there show which pages are done.
-        setPages((prev) =>
-          prev.map((p) =>
-            p.index === event.index ? { ...p, streaming: true } : p,
-          ),
-        );
+        setPages((prev) => applyPageEvent(prev, event));
       } else if (event.type === "page_delta") {
         const current = deltaBuffer.current.get(event.index) ?? "";
         deltaBuffer.current.set(event.index, current + event.text);
@@ -147,11 +145,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
         }
       } else if (event.type === "page_done") {
         flushDeltaBufferNow();
-        setPages((prev) =>
-          prev.map((p) =>
-            p.index === event.index ? { ...p, done: true, streaming: false } : p,
-          ),
-        );
+        setPages((prev) => applyPageEvent(prev, event));
       } else if (event.type === "job_done") {
         flushDeltaBufferNow();
         setJobDone(true);
