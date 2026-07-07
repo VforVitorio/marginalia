@@ -8,6 +8,8 @@
  * HTTP status. apiFetch throws ApiError on non-2xx responses.
  */
 
+import { readSseStream } from "../lib/sse";
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface Settings {
@@ -219,24 +221,38 @@ export async function setProviderKey(providerId: string, apiKey: string): Promis
   });
 }
 
+/** One frame of the pull SSE stream — same `{ type: ... }` envelope as `SseEvent` (AR-02). */
+export type PullEvent =
+  | { type: "pull_progress"; status: string; percent: number | null }
+  | { type: "error"; message: string };
+
 /**
  * Pull a model via Ollama's streaming pull endpoint.
  *
- * The backend streams SSE progress lines; this function drains the body to
- * completion and resolves when the pull finishes. No per-chunk parsing —
- * the caller is notified only on success or failure.
- *
- * Throws ApiError on a non-2xx response (e.g. unknown model name).
+ * Reads the backend's SSE stream frame by frame (via `readSseStream`) and forwards
+ * each `pull_progress` event to `onProgress`, so the caller can render live status/
+ * percent instead of a static "Pulling…" (issue #138 / FE-06). Previously this
+ * drained the body silently and resolved unconditionally, so a failed pull — a
+ * dropped Ollama connection, a bad model name — read as success; now a `{type:
+ * "error"}` frame throws an `ApiError` instead (issue #138 / BE-04).
  */
-export async function pullModel(providerId: string, model: string): Promise<void> {
+export async function pullModel(
+  providerId: string,
+  model: string,
+  onProgress?: (event: PullEvent) => void,
+): Promise<void> {
   const response = await apiFetchRaw(`/api/providers/${providerId}/pull`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model }),
   });
 
-  // Drain the SSE stream to completion — resolves when pull is done.
-  await response.text();
+  for await (const event of readSseStream<PullEvent>(response)) {
+    onProgress?.(event);
+    if (event.type === "error") {
+      throw new ApiError(0, event.message);
+    }
+  }
 }
 
 // ── Path suggestions (settings / onboarding inputs) ────────────────────────────
