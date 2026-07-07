@@ -92,8 +92,28 @@ class _HangingEngine(_FakeEngine):
         yield ""  # unreachable; makes this an async generator
 
 
+class _CountingEngine(_FakeEngine):
+    """Counts ``transcribe_page`` calls, to prove already-done pages are skipped on resume (BE-03)."""
+
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
+        self.call_count += 1
+        for chunk in ("Hel", "lo"):
+            yield chunk
+
+
 def _notebook() -> Notebook:
     return Notebook(name="nb", source_rel_path="nb.pdf", pages=[Page(index=1, image_png=b"\x89PNGfake")])
+
+
+def _two_page_notebook() -> Notebook:
+    return Notebook(
+        name="nb",
+        source_rel_path="nb.pdf",
+        pages=[Page(index=1, image_png=b"\x89PNGfake1"), Page(index=2, image_png=b"\x89PNGfake2")],
+    )
 
 
 def test_store_create_and_load(tmp_path) -> None:
@@ -174,6 +194,46 @@ async def test_run_ocr_skips_preflight_when_all_pages_already_done(tmp_path) -> 
     events = [event async for event in run_ocr(store, _UnreachableEngine(), record.job_id)]
     assert [event["type"] for event in events] == ["job_done"]
     assert store.load(record.job_id).status == "done"
+
+
+async def test_run_ocr_resume_skips_already_done_pages_without_re_ocring(tmp_path) -> None:
+    """BE-03: a re-stream (Stop, drop, refresh) must resume from the first undone page, not re-OCR."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_two_page_notebook())
+    store.save_page_markdown(record.job_id, 1, "already transcribed", done=True)
+
+    engine = _CountingEngine()
+    events = [event async for event in run_ocr(store, engine, record.job_id)]
+
+    assert engine.call_count == 1  # only the undone page (2) was sent to the engine
+    assert [event["type"] for event in events] == [
+        "page_started",
+        "page_delta",
+        "page_delta",
+        "page_done",
+        "job_done",
+    ]
+    assert events[0]["index"] == 2  # resumes at page 2, page 1 is not replayed or re-started
+
+    final = store.load(record.job_id)
+    assert final.pages[0].markdown == "already transcribed"  # untouched
+    assert final.pages[1].markdown == "Hello"
+    assert final.status == "done"
+
+
+async def test_run_ocr_disconnect_resets_status_to_pending_not_stuck_running(tmp_path) -> None:
+    """BE-02: closing the stream mid-run (Stop/tab-close/drop) must leave the job resumable, not
+    stuck ``running`` forever (which would also 409 every future stream attempt)."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_two_page_notebook())
+
+    generator = run_ocr(store, _FakeEngine(), record.job_id)
+    await generator.__anext__()  # consume "page_started" for page 1 — job.json now says "running"
+    assert store.load(record.job_id).status == "running"
+
+    await generator.aclose()  # simulates Starlette cancelling the generator on client disconnect
+
+    assert store.load(record.job_id).status == "pending"
 
 
 @pytest.mark.parametrize(

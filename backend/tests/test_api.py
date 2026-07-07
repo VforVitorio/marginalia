@@ -97,6 +97,31 @@ def test_loose_upload_exports_under_target_dir(tmp_path, monkeypatch) -> None:
     assert any("inbox" in path and path.endswith("memo.md") for path in written)
 
 
+def test_export_rejects_unknown_strategy(tmp_path, monkeypatch) -> None:
+    """BE-19: a typo'd strategy (free text) must 422, not silently export mirror-only."""
+    monkeypatch.chdir(tmp_path)
+    client = TestClient(app)
+    vault = str(tmp_path / "vault")
+    job_id = client.post("/api/jobs", files={"file": ("n.pdf", _one_page_pdf(), "application/pdf")}).json()["job_id"]
+    response = client.post(
+        f"/api/jobs/{job_id}/export",
+        json={"vault_path": vault, "strategies": ["wikilnks"]},  # typo
+    )
+    assert response.status_code == 422
+
+
+def test_corrupt_settings_json_falls_back_instead_of_500ing(tmp_path, monkeypatch) -> None:
+    """BE-12: a malformed settings.json must be handled, not surfaced as an unhandled 500."""
+    monkeypatch.chdir(tmp_path)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "settings.json").write_text("{not valid json", encoding="utf-8")
+    client = TestClient(app)
+    response = client.get("/api/settings")
+    assert response.status_code == 200
+    assert response.json()["strategies"] == ["mirror"]  # defaults, not a crash
+
+
 def test_providers_status_reports_state(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "providers.toml").write_text(

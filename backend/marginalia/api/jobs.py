@@ -6,7 +6,6 @@ Thin router: each route delegates to the ingest / jobs / export services and sha
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
-from typing import cast
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -31,7 +30,7 @@ from marginalia.ingest.scan import scan_pdfs
 from marginalia.jobs.service import run_ocr
 from marginalia.jobs.store import JobRecord, JobStore
 from marginalia.ocr.engine import OCREngine
-from marginalia.structure.mapper import NoteSource, Strategy
+from marginalia.structure.mapper import NoteSource
 
 router = APIRouter()
 
@@ -114,9 +113,8 @@ def edit_page(
 def export_job(job_id: str, body: ExportBody, store: JobStore = Depends(get_store)) -> ExportOut:
     record = _load_or_404(store, job_id)
     source = _note_source(record, body.target_dir)
-    strategies = cast(list[Strategy], body.strategies)
     try:
-        written = export_notes([source], strategies, Path(body.vault_path))
+        written = export_notes([source], body.strategies, Path(body.vault_path))
     except ValueError:
         raise HTTPException(status_code=400, detail="Export path escapes the vault.") from None
     return ExportOut(written=[str(path) for path in written])

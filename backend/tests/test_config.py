@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from marginalia import config
-from marginalia.config import Settings, save_settings
+from marginalia.config import Settings, load_settings, save_settings
 
 
 def test_resolve_home_dir_none_when_unset() -> None:
@@ -107,3 +107,23 @@ def test_save_settings_uses_atomic_write_no_tmp_left_behind(tmp_path) -> None:
     save_settings(Settings(vault_path="/vault"), path)
     assert path.exists()
     assert not (tmp_path / "settings.json.tmp").exists()
+
+
+def test_load_settings_falls_back_to_defaults_on_malformed_json(tmp_path) -> None:
+    """BE-12: invalid JSON syntax must not raise — the app falls back to defaults instead.
+
+    Compares ``.model_dump()`` (plain dicts), not the model instances themselves: an earlier test
+    in this file reloads ``marginalia.config`` (see ``test_marginalia_home_env_anchors_module_
+    constants``), which mints a new ``Settings`` class object — a `Settings() == Settings()`
+    instance comparison would then spuriously fail on class identity even with equal fields.
+    """
+    path = tmp_path / "settings.json"
+    path.write_text("{not valid json", encoding="utf-8")
+    assert load_settings(path).model_dump() == Settings().model_dump()
+
+
+def test_load_settings_falls_back_to_defaults_on_schema_mismatch(tmp_path) -> None:
+    """Valid JSON that fails Settings validation (wrong field type) also falls back, not raises."""
+    path = tmp_path / "settings.json"
+    path.write_text('{"strategies": "not-a-list"}', encoding="utf-8")
+    assert load_settings(path).model_dump() == Settings().model_dump()
