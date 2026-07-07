@@ -130,13 +130,20 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     [],
   );
 
-  // Null jobId closes the EventSource (see stopped state declaration above).
+  // Null jobId closes the EventSource. Don't open it for an already-done job:
+  // GET /jobs restored the pages, and re-opening would re-trigger OCR server-side
+  // and append onto (clobber) the user's edits.
   useJobStream(
-    initialLoading || stopped ? null : jobId,
+    initialLoading || stopped || jobDone ? null : jobId,
     handleSseEvent,
     () => {
-      // Stream closed (terminal event or network drop) — unblock the UI.
+      // Terminal close (job_done or error frame) — the run finished.
       setJobDone(true);
+    },
+    () => {
+      // Network-level drop, not a normal close. Don't fake "complete" — surface
+      // it so the user can go Back and re-open to resume (done pages are on disk).
+      setStreamError("Connection to the OCR stream was lost. Go Back and re-open the job to resume.");
     },
   );
 
