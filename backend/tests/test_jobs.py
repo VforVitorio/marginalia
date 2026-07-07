@@ -1,16 +1,23 @@
-"""Job store round-trips on disk; run_ocr streams events and persists page markdown."""
+"""Job store round-trips on disk; run_ocr streams events and persists page markdown.
+
+Also covers the stream-robustness trio (BE-08/09/10): SSE heartbeats (``api/sse.py``), the per-page
+OCR timeout (``jobs/service.py``), and ``OpenAICompatEngine``'s split connect/read timeout.
+"""
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 
 import httpx
 import pytest
 
+from marginalia.api.sse import sse_stream
 from marginalia.ingest.pdf import Notebook, Page
 from marginalia.jobs.service import run_ocr
 from marginalia.jobs.store import JobStore
 from marginalia.ocr.engine import EngineInfo
+from marginalia.ocr.openai_compat import OpenAICompatEngine
 
 
 class _FakeEngine:
@@ -75,6 +82,14 @@ class _TimeoutEngine(_FakeEngine):
     async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
         async for chunk in _raise(httpx.ReadTimeout("timed out")):
             yield chunk
+
+
+class _HangingEngine(_FakeEngine):
+    """A provider whose ``transcribe_page`` never completes — a wedged runtime or subprocess (BE-10)."""
+
+    async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
+        await asyncio.sleep(999)
+        yield ""  # unreachable; makes this an async generator
 
 
 def _notebook() -> Notebook:
@@ -177,3 +192,54 @@ async def test_run_ocr_names_the_failure_class(tmp_path, engine_cls, expected_sn
     events = [event async for event in run_ocr(store, engine_cls(), record.job_id)]
     assert events[-1]["type"] == "error"
     assert expected_snippet in events[-1]["message"].lower()
+
+
+async def test_run_ocr_page_timeout_fails_the_page_instead_of_hanging_forever(tmp_path) -> None:
+    """BE-10: a hung engine must not hang the job (and the SSE stream) forever."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_notebook())
+    events = [event async for event in run_ocr(store, _HangingEngine(), record.job_id, page_timeout=0.05)]
+    assert events[-1]["type"] == "error"
+    assert "didn't respond in time" in events[-1]["message"].lower()
+    assert store.load(record.job_id).status == "error"
+
+
+async def test_run_ocr_page_timeout_does_not_trip_on_a_merely_slow_page(tmp_path) -> None:
+    """A page that finishes comfortably inside the timeout must transcribe normally."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_notebook())
+    events = [event async for event in run_ocr(store, _FakeEngine(), record.job_id, page_timeout=5.0)]
+    assert events[-1]["type"] == "job_done"
+    assert store.load(record.job_id).status == "done"
+
+
+async def test_sse_stream_emits_heartbeats_during_a_quiet_gap_without_losing_events() -> None:
+    """BE-08: a slow producer gets ``: keep-alive`` comments interleaved, but no event is dropped."""
+
+    async def _slow_events() -> AsyncIterator[dict]:
+        yield {"type": "a"}
+        await asyncio.sleep(0.05)
+        yield {"type": "b"}
+
+    frames = [frame async for frame in sse_stream(_slow_events(), heartbeat_interval=0.01)]
+    assert frames[0] == 'data: {"type": "a"}\n\n'
+    assert frames[-1] == 'data: {"type": "b"}\n\n'
+    assert frames.count(": keep-alive\n\n") >= 1
+
+
+async def test_sse_stream_survives_run_ocr_end_to_end_with_heartbeats(tmp_path) -> None:
+    """BE-08 + BE-10 together: heartbeats during a page timeout must not swallow the final error."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_notebook())
+    events_iter = run_ocr(store, _HangingEngine(), record.job_id, page_timeout=0.05)
+    frames = [frame async for frame in sse_stream(events_iter, heartbeat_interval=0.01)]
+    assert any(frame == ": keep-alive\n\n" for frame in frames)
+    assert '"type": "error"' in frames[-1]
+    assert store.load(record.job_id).status == "error"
+
+
+def test_openai_compat_engine_splits_connect_from_read_timeout() -> None:
+    """BE-09: connect must fail fast even when the read budget stays generous for slow generation."""
+    engine = OpenAICompatEngine(id="x", display_name="X", kind="local", base_url="http://h/v1", model="m", timeout=45.0)
+    assert engine._timeout.connect == 5.0
+    assert engine._timeout.read == 45.0

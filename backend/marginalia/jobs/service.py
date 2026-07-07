@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
+from typing import Final
 
 import httpx
 
@@ -23,6 +24,12 @@ _PREFLIGHT_UNREACHABLE_ERROR = (
     "Can't reach the selected provider, or no model is loaded — check its status and try again."
 )
 
+# BE-10: ceiling on one page's transcription (from the first chunk to the last). A hung engine —
+# a wedged local runtime, an Agent SDK subprocess that never returns — would otherwise hang the job,
+# and with it the whole SSE stream, forever. 10 minutes is generous enough for a slow cold-loaded
+# model on a long page while still guaranteeing the job eventually fails instead of hanging.
+PAGE_TIMEOUT_S: Final = 600.0
+
 
 def _error_message(exc: Exception) -> str:
     """Map a known OCR failure class (BE-15) to an actionable message; unknown failures stay generic.
@@ -33,7 +40,9 @@ def _error_message(exc: Exception) -> str:
     """
     if isinstance(exc, httpx.ConnectError):
         return "Can't reach the OCR provider — is it running and reachable?"
-    if isinstance(exc, httpx.TimeoutException):
+    if isinstance(exc, (httpx.TimeoutException, TimeoutError)):
+        # TimeoutError also covers PAGE_TIMEOUT_S expiring (asyncio.timeout, BE-10), not just httpx's
+        # own timeout classes — both mean "the provider didn't produce the page in time".
         return "The provider didn't respond in time — the model may still be loading; try again."
     if isinstance(exc, httpx.HTTPStatusError):
         status_code = exc.response.status_code
@@ -49,6 +58,7 @@ async def run_ocr(
     engine: OCREngine,
     job_id: str,
     prompt: str | None = None,
+    page_timeout: float = PAGE_TIMEOUT_S,
 ) -> AsyncGenerator[dict, None]:
     """Transcribe every page of a job, persisting each page as it completes and yielding events.
 
@@ -58,6 +68,12 @@ async def run_ocr(
     Before touching any page, a lightweight preflight (BE-15) calls ``engine.models()`` — off the
     event loop — so a provider that's down or has nothing loaded fails once, immediately, instead of
     hanging on page 1's own timeout or repeating the same failure page after page.
+
+    ``page_timeout`` (BE-10) bounds one page's whole transcription — from the first chunk to the
+    last — so a hung engine (a wedged local runtime, an Agent SDK subprocess that never returns)
+    fails that page cleanly instead of hanging the job, and the SSE stream with it, forever. It's a
+    parameter (not just the ``PAGE_TIMEOUT_S`` module constant) so tests can exercise the timeout path
+    without waiting 10 minutes.
     """
     prompt = prompt or HANDWRITING_PROMPT
     record = store.set_status(job_id, "running")
@@ -75,9 +91,10 @@ async def run_ocr(
             yield {"type": "page_started", "index": page.index}
             image = store.read_image(job_id, page.index)
             chunks: list[str] = []
-            async for chunk in engine.transcribe_page(image, prompt):
-                chunks.append(chunk)
-                yield {"type": "page_delta", "index": page.index, "text": chunk}
+            async with asyncio.timeout(page_timeout):
+                async for chunk in engine.transcribe_page(image, prompt):
+                    chunks.append(chunk)
+                    yield {"type": "page_delta", "index": page.index, "text": chunk}
             store.save_page_markdown(job_id, page.index, "".join(chunks), done=True)
             yield {"type": "page_done", "index": page.index}
         store.set_status(job_id, "done")
