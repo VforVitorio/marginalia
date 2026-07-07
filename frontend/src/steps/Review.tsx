@@ -58,12 +58,16 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   const [stopped, setStopped] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
   // Page indices with a save in flight. State (not a ref) so the "Saving…"
   // indicator actually re-renders when it changes.
   const [savingPages, setSavingPages] = useState<Set<number>>(() => new Set());
   const saveTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  // Markdown that's been scheduled to save but whose debounce hasn't fired yet,
+  // keyed by page index. Lets unmount flush the in-flight edit instead of dropping it.
+  const pendingSaves = useRef<Map<number, string>>(new Map());
 
   // ── Initial state fetch ──────────────────────────────────────────────────
 
@@ -80,8 +84,11 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
         );
         if (job.status === "done") setJobDone(true);
       })
-      .catch(() => {
-        // Non-fatal: start with empty pages and let the stream fill them.
+      .catch((err) => {
+        // Surface the failure instead of silently starting empty — an empty
+        // editor that a dropped stream then marks "done" reads as an exportable
+        // job with no content. The stream may still fill pages if it works.
+        setLoadError(err instanceof Error ? err.message : "Couldn't load this job.");
       })
       .finally(() => setInitialLoading(false));
   }, [jobId]);
@@ -135,14 +142,15 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
 
   // ── Auto-save ────────────────────────────────────────────────────────────
 
-  function scheduleSave(pageIndex: number) {
+  function scheduleSave(pageIndex: number, markdown: string) {
     setSavingPages((prev) => new Set(prev).add(pageIndex));
     const existing = saveTimers.current.get(pageIndex);
     if (existing) clearTimeout(existing);
 
-    // Capture the current markdown now so doSave closes over the value at
-    // schedule time, not the potentially-stale `pages` state at fire time.
-    const markdown = pages.find((p) => p.index === pageIndex)?.markdown ?? "";
+    // Remember the exact value handed in by the change handler. Reading it from
+    // `pages` here would lag one render behind — React hasn't applied the
+    // setPages from this same keystroke yet, so the last edit of a burst is lost.
+    pendingSaves.current.set(pageIndex, markdown);
     const timer = setTimeout(() => {
       doSave(pageIndex, markdown);
     }, 800);
@@ -150,6 +158,9 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   }
 
   async function doSave(pageIndex: number, markdown: string) {
+    // This value is now being persisted — no longer merely pending a debounce.
+    pendingSaves.current.delete(pageIndex);
+    saveTimers.current.delete(pageIndex);
     try {
       await updatePageMarkdown(jobId, pageIndex, markdown);
       setSaveError(null);
@@ -169,17 +180,23 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
     setPages((prev) =>
       prev.map((p) => (p.index === pageIndex ? { ...p, markdown: value } : p)),
     );
-    scheduleSave(pageIndex);
+    scheduleSave(pageIndex, value);
   }
 
-  // Clear any pending save timers on unmount. Capture the Map ref now so the
-  // cleanup closes over the same instance (it's mutated in place as edits land).
+  // On unmount, flush any debounced-but-unsaved edit before clearing its timer.
+  // Otherwise navigating to Export within the 800 ms window silently drops the
+  // last edit. Capture the Map refs now so cleanup closes over the same instances.
   useEffect(() => {
     const timers = saveTimers.current;
+    const pending = pendingSaves.current;
     return () => {
       timers.forEach(clearTimeout);
+      pending.forEach((markdown, pageIndex) => {
+        void updatePageMarkdown(jobId, pageIndex, markdown).catch(() => {});
+      });
+      pending.clear();
     };
-  }, []);
+  }, [jobId]);
 
   // ── Rendering ────────────────────────────────────────────────────────────
 
@@ -267,6 +284,12 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
       )}
       {saveError && (
         <ErrorBanner message={`Save error: ${saveError}`} onDismiss={() => setSaveError(null)} />
+      )}
+      {loadError && (
+        <ErrorBanner
+          message={`Couldn't load saved progress: ${loadError}`}
+          onDismiss={() => setLoadError(null)}
+        />
       )}
 
       {/* Page tabs */}
