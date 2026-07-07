@@ -8,13 +8,14 @@ Each job is a directory ``data/jobs/{id}/`` holding ``job.json`` (state, pages, 
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from marginalia.config import DATA_DIR
+from marginalia.config import DATA_DIR, write_text_atomic
 from marginalia.ingest.pdf import Notebook
 
 # job_id reaches the filesystem from the URL, so it must be exactly the shape create() produces
@@ -72,6 +73,40 @@ class JobStore:
         """Read a job's record from disk."""
         return JobRecord.model_validate_json(self._record_path(job_id).read_text(encoding="utf-8"))
 
+    def list_jobs(self) -> list[JobRecord]:
+        """List every job record under the root directory (BE-13).
+
+        Lets a job be rediscovered after a browser refresh, since today the id lives only in
+        frontend memory. A directory that isn't a valid job (bad id shape, missing/corrupt
+        ``job.json``) is skipped rather than raising, so one broken job doesn't break the whole
+        listing. Ordering is by directory name (uuid4 hex — not chronological); callers that need
+        recency should sort by a field on the record.
+        """
+        if not self._root.is_dir():
+            return []
+        records: list[JobRecord] = []
+        for entry in sorted(self._root.iterdir()):
+            if not entry.is_dir() or not _JOB_ID_RE.fullmatch(entry.name):
+                continue
+            try:
+                records.append(self.load(entry.name))
+            except (OSError, ValueError):
+                continue
+        return records
+
+    def delete(self, job_id: str) -> bool:
+        """Delete a job's entire workspace directory: ``job.json`` and every page PNG (BE-13).
+
+        Keeps ``data/jobs/`` from growing unbounded (each job holds full-resolution page images).
+        Returns ``True`` if the job existed and was removed, ``False`` if there was nothing to
+        delete — idempotent, so callers can retry without checking existence first.
+        """
+        job_dir = self._job_dir(job_id)
+        if not job_dir.is_dir():
+            return False
+        shutil.rmtree(job_dir)
+        return True
+
     def read_image(self, job_id: str, index: int) -> bytes:
         """Read one page's rendered PNG."""
         return self.page_image_path(job_id, index).read_bytes()
@@ -107,4 +142,4 @@ class JobStore:
         return self._job_dir(job_id) / "job.json"
 
     def _write(self, record: JobRecord) -> None:
-        self._record_path(record.job_id).write_text(record.model_dump_json(indent=2), encoding="utf-8")
+        write_text_atomic(self._record_path(record.job_id), record.model_dump_json(indent=2))
