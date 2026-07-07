@@ -19,6 +19,7 @@ import {
   setProviderKey,
   type ProviderState,
   type ProviderStatus,
+  type PullEvent,
 } from "../api/client";
 import { PanelError } from "./PanelError";
 import { Spinner } from "./Spinner";
@@ -408,20 +409,25 @@ function PullPanel({
 }) {
   const [model, setModel] = useState("");
   const [pulling, setPulling] = useState(false);
+  const [progress, setProgress] = useState<PullEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handlePull() {
     const target = model.trim();
     if (!target) return;
     setPulling(true);
+    setProgress(null);
     setError(null);
     try {
-      await pullModel(providerId, target);
+      await pullModel(providerId, target, (event) => {
+        if (event.type === "pull_progress") setProgress(event);
+      });
       await onPulled(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pull failed.");
     } finally {
       setPulling(false);
+      setProgress(null);
     }
   }
 
@@ -466,10 +472,39 @@ function PullPanel({
           {pulling ? "Pulling…" : "Pull"}
         </button>
       </div>
-      {pulling && (
-        <p className="text-2xs text-muted italic">Pulling… this can take a while.</p>
-      )}
+      {pulling && <PullProgress event={progress} />}
       {error && <PanelError message={error} />}
+    </div>
+  );
+}
+
+/** Live status line + bar for a running pull — replaces the old static "Pulling…" text (issue #138). */
+function PullProgress({ event }: { event: PullEvent | null }) {
+  const percent = event?.type === "pull_progress" ? event.percent : null;
+  const status = event?.type === "pull_progress" && event.status ? event.status : "Pulling…";
+
+  return (
+    <div className="flex flex-col gap-1" aria-live="polite">
+      <p className="text-2xs text-muted italic tabular-nums">
+        {status}
+        {percent != null ? ` · ${percent}%` : ""}
+      </p>
+      <div
+        role="progressbar"
+        aria-label="Model pull progress"
+        aria-valuenow={percent ?? undefined}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-1 w-full rounded-full bg-surface-2 overflow-hidden"
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{
+            width: `${percent ?? 0}%`,
+            backgroundColor: "var(--color-accent)",
+          }}
+        />
+      </div>
     </div>
   );
 }
