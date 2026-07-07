@@ -79,6 +79,7 @@ npm run lint && npm run typecheck
 - **Versioning**: `/api` prefix. **Errors**: `{ "detail": "..." }` with the right HTTP status.
 - **Live OCR**: SSE at `GET /api/jobs/{id}/stream`. Events: `page_started`, `page_delta`, `page_done`, `job_done`, `error`.
 - **Auth**: none (single-user local app). Claude's auth state is exposed as **data** (connected / not), not a login.
+- **Contract types**: `frontend/src/api/client.ts` defines TypeScript interfaces (`Settings`, `ProviderStatus`, `JobState`, `PageState`, ...) that are **hand-maintained mirrors** of `backend/marginalia/api/schemas.py`, field-for-field, including their wire-format `snake_case` names (`job_id`, `rel_path`, `vault_path`, ...). This is a deliberate choice — no `openapi-typescript` codegen pipeline — so it only works if both sides move together: **when a Pydantic schema field is added, renamed, or retyped, update the matching `client.ts` interface in the same PR.** The §7 "camelCase in the frontend" rule governs local app code (component state, props, function names); it does not apply to these wire-format field names, which must stay `snake_case` to match the JSON the backend actually sends.
 
 ## 7. Code quality
 
