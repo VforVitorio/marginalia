@@ -25,8 +25,13 @@ def runtime_status(provider: ProviderConfig) -> tuple[bool, list[str]]:
     tell "runtime down" from "running but no model loaded". For Claude there is no HTTP runtime.
     LM Studio gets a fast TCP pre-check first so a closed runtime fails in ~0.5s, not the HTTP timeout.
     """
-    if not provider.base_url:  # Claude (Agent SDK) or a misconfigured entry
-        return True, ([provider.default_model] if provider.default_model else [])
+    if not provider.base_url:
+        if provider.id == "claude":  # Claude (Agent SDK) has no HTTP runtime to probe
+            return True, ([provider.default_model] if provider.default_model else [])
+        # BE-21: any other provider with no base_url is misconfigured, not ready — this used to
+        # early-return reachable+ready for every no-base_url entry, which let a broken local
+        # provider (e.g. a typo'd/blanked base_url in providers.toml) show a green status.
+        return False, []
     if provider.id == "lmstudio":
         host, port = _host_port(provider.base_url, lms_bridge.DEFAULT_PORT)
         if not lms_bridge.is_server_up(host, port):
