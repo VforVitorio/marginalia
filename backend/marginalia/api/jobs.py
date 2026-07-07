@@ -27,7 +27,7 @@ from marginalia.config import load_settings
 from marginalia.export.service import export_notes
 from marginalia.ingest.pdf import Notebook, load_notebook, render_pdf
 from marginalia.ingest.scan import scan_pdfs
-from marginalia.jobs.service import run_ocr
+from marginalia.jobs.runner import tail_job
 from marginalia.jobs.store import JobRecord, JobStore
 from marginalia.ocr.engine import OCREngine
 from marginalia.structure.mapper import NoteSource
@@ -81,16 +81,15 @@ async def stream_job(
     store: JobStore = Depends(get_store),
     engine: OCREngine = Depends(get_active_engine),
 ) -> StreamingResponse:
-    record = _load_or_404(store, job_id)
-    if record.status == "running":
-        # A stream is already OCRing this job (e.g. a second tab). Two runners would race the
-        # non-atomic job.json writes and double the OCR cost. Resuming a stopped job is fine —
-        # run_ocr resets a disconnected job back to "pending" (see jobs/service.py).
-        raise HTTPException(
-            status_code=409,
-            detail="This job is already being transcribed. Close the other tab or wait for it to finish.",
-        )
-    return StreamingResponse(sse_stream(run_ocr(store, engine, job_id)), media_type="text/event-stream")
+    """Tail a job's OCR: replay whatever's already done, then observe the live run (AR-01).
+
+    This route no longer *triggers* OCR — ``tail_job`` starts (or reuses) the job's background
+    runner and only observes it. A second tab opening the same stream attaches to that same
+    runner instead of starting a competing OCR pass, and closing this connection only detaches
+    the observer: the runner keeps transcribing to disk regardless of who's watching.
+    """
+    _load_or_404(store, job_id)  # 404 for a missing/invalid job id before opening the stream
+    return StreamingResponse(sse_stream(tail_job(store, engine, job_id)), media_type="text/event-stream")
 
 
 @router.put("/jobs/{job_id}/pages/{index}")
