@@ -60,6 +60,8 @@ export default function App() {
   const [status, setStatus] = useState<ProviderStatus[] | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [providersLoading, setProvidersLoading] = useState(true);
+  const [providerSelectPending, setProviderSelectPending] = useState(false);
+  const [providerSelectError, setProviderSelectError] = useState<string | null>(null);
 
   // First-run onboarding gate — cleared to false once the user sees it.
   const [showOnboarding, setShowOnboarding] = useState<boolean>(
@@ -167,10 +169,30 @@ export default function App() {
     }
   }
 
-  async function handleProviderSelect(providerId: string, model?: string) {
-    const updated = await selectProvider({ provider_id: providerId, model });
-    setSettings(updated);
-    await refreshProviders();
+  /**
+   * Selects a provider/model. Tracks a pending flag so ProviderPicker can show a
+   * busy state on the row, and never throws — a failure is captured in
+   * providerSelectError for the picker to surface instead of becoming an
+   * unhandled rejection (this used to await two round-trips with no try/catch
+   * and no busy state at all).
+   *
+   * Returns whether the selection succeeded so the picker only closes its
+   * popover on success — on failure it stays open with the error visible.
+   */
+  async function handleProviderSelect(providerId: string, model?: string): Promise<boolean> {
+    setProviderSelectPending(true);
+    setProviderSelectError(null);
+    try {
+      const updated = await selectProvider({ provider_id: providerId, model });
+      setSettings(updated);
+      await refreshProviders();
+      return true;
+    } catch (err) {
+      setProviderSelectError(err instanceof Error ? err.message : "Could not select the provider.");
+      return false;
+    } finally {
+      setProviderSelectPending(false);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -209,6 +231,8 @@ export default function App() {
                 status={status}
                 active={settings?.active_provider ?? null}
                 loading={providersLoading}
+                selecting={providerSelectPending}
+                selectError={providerSelectError}
                 onSelect={handleProviderSelect}
                 onRefresh={refreshProviders}
               />
