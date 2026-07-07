@@ -31,6 +31,10 @@ async def run_ocr(
     record = store.set_status(job_id, "running")
     try:
         for page in record.pages:
+            if page.done:
+                # Already transcribed in a previous run — the client restored it from disk via
+                # GET /jobs/{id}. Re-OCRing would waste tokens/GPU and clobber the user's edits.
+                continue
             yield {"type": "page_started", "index": page.index}
             image = store.read_image(job_id, page.index)
             chunks: list[str] = []
@@ -46,3 +50,10 @@ async def run_ocr(
         logger.exception("OCR failed for job %s", job_id)
         store.set_status(job_id, "error")
         yield {"type": "error", "message": "OCR failed — check the selected provider and model, then try again."}
+    finally:
+        # If the client disconnected mid-run (Stop, tab close, network drop), GeneratorExit unwinds
+        # through here before either terminal branch set a final status — so it's still "running".
+        # Reset it to "pending" so the job is resumable (the loop above skips done pages) instead of
+        # stuck "running" forever, which would also 409 every future stream (see api/jobs.py).
+        if store.load(job_id).status == "running":
+            store.set_status(job_id, "pending")
