@@ -54,10 +54,12 @@ export function connectJobStream(jobId: string, handlers: SseHandlers): () => vo
   };
 
   source.onerror = (err) => {
-    handlers.onError?.(err);
     // EventSource auto-reconnects on error; close explicitly to stop that.
     source.close();
-    handlers.onClose?.();
+    // Only onError here — NOT onClose. A network drop is not a normal close, so
+    // the caller must be able to tell "stream interrupted" from "run finished"
+    // (onClose fires solely after a terminal job_done / error frame above).
+    handlers.onError?.(err);
   };
 
   return () => {
