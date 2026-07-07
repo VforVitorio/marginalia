@@ -10,14 +10,39 @@ use": ``providers.toml`` is seed/credentials, ``settings.json`` is written by th
 
 from __future__ import annotations
 
+import os
 import tomllib
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-DATA_DIR = Path("data")
-SETTINGS_PATH = DATA_DIR / "settings.json"
-PROVIDERS_PATH = Path("providers.toml")
+
+def _resolve_home_dir(env_value: str | None) -> Path | None:
+    """Pure resolution of the ``MARGINALIA_HOME`` env var.
+
+    ``None`` (unset or empty) means "stay CWD-relative" — the historical, still-default
+    behavior that lets tests isolate ``data/`` and ``providers.toml`` with
+    ``monkeypatch.chdir(tmp_path)`` (see ``backend/tests/test_api.py``). Only a non-empty
+    value anchors the paths to a fixed directory, for running the installed console script
+    from outside the repo checkout (BE-11).
+    """
+    return Path(env_value) if env_value else None
+
+
+def _resolve_paths(home: Path | None) -> tuple[Path, Path, Path]:
+    """Derive ``(data_dir, settings_path, providers_path)`` from an optional anchor dir.
+
+    ``home=None`` keeps every path relative, resolved against the process CWD at each
+    filesystem call — exactly the pre-``MARGINALIA_HOME`` behavior.
+    """
+    data_dir = (home / "data") if home else Path("data")
+    settings_path = data_dir / "settings.json"
+    providers_path = (home / "providers.toml") if home else Path("providers.toml")
+    return data_dir, settings_path, providers_path
+
+
+_MARGINALIA_HOME = _resolve_home_dir(os.environ.get("MARGINALIA_HOME"))
+DATA_DIR, SETTINGS_PATH, PROVIDERS_PATH = _resolve_paths(_MARGINALIA_HOME)
 
 
 class ProviderConfig(BaseModel):
@@ -74,4 +99,19 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
 def save_settings(settings: Settings, path: Path = SETTINGS_PATH) -> None:
     """Persist the user's choices (the UI calls this whenever something changes)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(settings.model_dump_json(indent=2), encoding="utf-8")
+    write_text_atomic(path, settings.model_dump_json(indent=2))
+
+
+def write_text_atomic(path: Path, text: str, *, encoding: str = "utf-8") -> None:
+    """Write ``text`` to ``path`` without ever leaving a truncated file behind (BE-12).
+
+    Writes to a sibling temp file first, then ``os.replace`` swaps it into place — atomic on
+    both POSIX and Windows as long as source and destination share a filesystem, which the
+    same-directory temp file guarantees. A crash or power-cut mid-write leaves the temp file
+    corrupt and ``path`` untouched, instead of truncating ``path`` itself into invalid JSON that
+    would otherwise 500 on the next read. Shared by ``save_settings`` above and
+    ``jobs.store.JobStore._write``.
+    """
+    tmp_path = path.with_name(f"{path.name}.tmp")
+    tmp_path.write_text(text, encoding=encoding)
+    os.replace(tmp_path, path)
