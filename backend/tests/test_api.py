@@ -187,9 +187,7 @@ def test_uncurated_cloud_provider_falls_back_to_probed_models(tmp_path, monkeypa
         'api_key="a-real-key"\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(
-        "marginalia.api.providers.runtime_status", lambda provider: (True, ["model-a", "model-b"])
-    )
+    monkeypatch.setattr("marginalia.api.providers.runtime_status", lambda provider: (True, ["model-a", "model-b"]))
     client = TestClient(app)
     status = client.get("/api/providers/status").json()["providers"][0]
     assert status["state"] == "ready"
