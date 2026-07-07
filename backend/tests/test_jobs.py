@@ -14,6 +14,7 @@ import pytest
 
 from marginalia.api.sse import sse_stream
 from marginalia.ingest.pdf import Notebook, Page
+from marginalia.jobs.runner import get_runner, tail_job
 from marginalia.jobs.service import run_ocr
 from marginalia.jobs.store import JobStore
 from marginalia.ocr.engine import EngineInfo
@@ -101,6 +102,21 @@ class _CountingEngine(_FakeEngine):
     async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
         self.call_count += 1
         for chunk in ("Hel", "lo"):
+            yield chunk
+
+
+class _CountingDelayedEngine(_CountingEngine):
+    """Like ``_CountingEngine``, but with a real ``await`` between chunks (AR-01 runner tests).
+
+    A fully synchronous fake never yields control back to the event loop mid-page, so a test
+    couldn't reliably observe the runner "mid-flight" (e.g. to disconnect, or to attach a second
+    subscriber, before it finishes). The sleep is short enough to keep tests fast.
+    """
+
+    async def transcribe_page(self, image_png: bytes, prompt: str) -> AsyncIterator[str]:
+        self.call_count += 1
+        for chunk in ("Hel", "lo"):
+            await asyncio.sleep(0.01)
             yield chunk
 
 
@@ -222,8 +238,11 @@ async def test_run_ocr_resume_skips_already_done_pages_without_re_ocring(tmp_pat
 
 
 async def test_run_ocr_disconnect_resets_status_to_pending_not_stuck_running(tmp_path) -> None:
-    """BE-02: closing the stream mid-run (Stop/tab-close/drop) must leave the job resumable, not
-    stuck ``running`` forever (which would also 409 every future stream attempt)."""
+    """BE-02: if ``run_ocr``'s own generator is ever closed mid-run, the job must stay resumable,
+    not stuck ``running`` forever. Since AR-01 (jobs/runner.py), a client's SSE tab closing no
+    longer reaches this path at all — it only unsubscribes from the runner, which keeps OCRing
+    (see test_runner_keeps_ocring_after_its_only_subscriber_disconnects below). This safety net
+    still matters for a true cancellation of the runner's background task (e.g. app shutdown)."""
     store = JobStore(root=tmp_path)
     record = store.create(_two_page_notebook())
 
@@ -231,7 +250,7 @@ async def test_run_ocr_disconnect_resets_status_to_pending_not_stuck_running(tmp
     await generator.__anext__()  # consume "page_started" for page 1 — job.json now says "running"
     assert store.load(record.job_id).status == "running"
 
-    await generator.aclose()  # simulates Starlette cancelling the generator on client disconnect
+    await generator.aclose()  # simulates the generator being cancelled out from under run_ocr
 
     assert store.load(record.job_id).status == "pending"
 
@@ -296,6 +315,78 @@ async def test_sse_stream_survives_run_ocr_end_to_end_with_heartbeats(tmp_path) 
     assert any(frame == ": keep-alive\n\n" for frame in frames)
     assert '"type": "error"' in frames[-1]
     assert store.load(record.job_id).status == "error"
+
+
+async def test_runner_keeps_ocring_after_its_only_subscriber_disconnects(tmp_path) -> None:
+    """AR-01: closing the SSE tab must not stop the OCR — only ``tail_job`` should notice."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_two_page_notebook())
+    engine = _CountingDelayedEngine()
+
+    generator = tail_job(store, engine, record.job_id)
+    first_event = await generator.__anext__()
+    assert first_event == {"type": "page_started", "index": 1}
+
+    await generator.aclose()  # simulates Starlette closing the generator on client disconnect
+
+    state = get_runner(record.job_id)
+    assert state is not None, "the runner must still be alive after its only subscriber left"
+    await state.task  # wait for the background OCR to finish on its own, unattended
+
+    final = store.load(record.job_id)
+    assert final.status == "done"
+    assert final.pages[0].done is True
+    assert final.pages[0].markdown == "Hello"
+    assert final.pages[1].done is True
+    assert final.pages[1].markdown == "Hello"
+
+
+async def test_second_concurrent_stream_tails_without_a_second_ocr_run(tmp_path) -> None:
+    """AR-01: two tabs on the same job share one runner — replaces the old 409-on-double-stream."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_two_page_notebook())
+    engine = _CountingDelayedEngine()
+
+    async def _drain(generator: AsyncIterator[dict]) -> list[dict]:
+        return [event async for event in generator]
+
+    stream_a = tail_job(store, engine, record.job_id)
+    first_event = await stream_a.__anext__()  # tab A opens the stream, starting the one runner
+    assert first_event["type"] == "page_started"
+
+    stream_b = tail_job(store, engine, record.job_id)  # tab B opens the SAME job mid-run
+
+    events_a, events_b = await asyncio.gather(_drain(stream_a), _drain(stream_b))
+    events_a = [first_event, *events_a]
+
+    assert engine.call_count == 2  # exactly one transcribe_page call per page — never doubled
+    assert events_a[-1]["type"] == "job_done"
+    assert events_b[-1]["type"] == "job_done"
+    final = store.load(record.job_id)
+    assert final.status == "done"
+    assert [page.markdown for page in final.pages] == ["Hello", "Hello"]
+
+
+async def test_tail_job_resumes_via_the_runner_without_re_ocring_done_pages(tmp_path) -> None:
+    """BE-03 still holds through the runner: a fresh tail replays the done page from disk and
+    only sends the undone page to the engine."""
+    store = JobStore(root=tmp_path)
+    record = store.create(_two_page_notebook())
+    store.save_page_markdown(record.job_id, 1, "already transcribed", done=True)
+    engine = _CountingEngine()
+
+    events = [event async for event in tail_job(store, engine, record.job_id)]
+
+    assert engine.call_count == 1  # only page 2 (undone) was sent to the engine
+    # page 1 is replayed from disk, verbatim, before anything live arrives
+    assert events[0] == {"type": "page_started", "index": 1}
+    assert events[1] == {"type": "page_delta", "index": 1, "text": "already transcribed"}
+    assert events[2] == {"type": "page_done", "index": 1}
+    assert events[-1]["type"] == "job_done"
+    final = store.load(record.job_id)
+    assert final.pages[0].markdown == "already transcribed"  # untouched by the replay
+    assert final.pages[1].markdown == "Hello"
+    assert final.status == "done"
 
 
 def test_openai_compat_engine_splits_connect_from_read_timeout() -> None:
