@@ -95,9 +95,42 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
 
   // ── SSE stream ───────────────────────────────────────────────────────────
 
+  // page_delta frames arrive one per token, each its own SSE task — React 18
+  // can't batch across separate browser tasks, so without buffering, render
+  // rate equals token rate. Accumulate delta text per page in a ref and flush
+  // to state once per animation frame: many token concatenations collapse
+  // into one setPages call, capping re-renders at the display refresh rate.
+  const deltaBuffer = useRef<Map<number, string>>(new Map());
+  const flushHandle = useRef<number | null>(null);
+
+  const applyDeltaBuffer = useCallback(() => {
+    flushHandle.current = null;
+    if (deltaBuffer.current.size === 0) return;
+    const updates = deltaBuffer.current;
+    deltaBuffer.current = new Map();
+    setPages((prev) =>
+      prev.map((p) => {
+        const extra = updates.get(p.index);
+        return extra ? { ...p, markdown: p.markdown + extra } : p;
+      }),
+    );
+  }, []);
+
+  // Flush synchronously (cancelling any scheduled frame first) before events
+  // that depend on the page's markdown being fully up to date — otherwise a
+  // page_done could commit while a token or two is still sitting in the
+  // buffer, one frame behind.
+  const flushDeltaBufferNow = useCallback(() => {
+    if (flushHandle.current !== null) {
+      cancelAnimationFrame(flushHandle.current);
+    }
+    applyDeltaBuffer();
+  }, [applyDeltaBuffer]);
+
   const handleSseEvent = useCallback(
     (event: SseEvent) => {
       if (event.type === "page_started") {
+        flushDeltaBufferNow();
         // Mark the page streaming, but do NOT move the user's view — auto-jumping
         // pages mid-OCR (or while they're editing) is disorienting. They navigate
         // via the tab bar; the dots there show which pages are done.
@@ -107,27 +140,28 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
           ),
         );
       } else if (event.type === "page_delta") {
-        setPages((prev) =>
-          prev.map((p) =>
-            p.index === event.index
-              ? { ...p, markdown: p.markdown + event.text }
-              : p,
-          ),
-        );
+        const current = deltaBuffer.current.get(event.index) ?? "";
+        deltaBuffer.current.set(event.index, current + event.text);
+        if (flushHandle.current === null) {
+          flushHandle.current = requestAnimationFrame(applyDeltaBuffer);
+        }
       } else if (event.type === "page_done") {
+        flushDeltaBufferNow();
         setPages((prev) =>
           prev.map((p) =>
             p.index === event.index ? { ...p, done: true, streaming: false } : p,
           ),
         );
       } else if (event.type === "job_done") {
+        flushDeltaBufferNow();
         setJobDone(true);
       } else if (event.type === "error") {
+        flushDeltaBufferNow();
         setStreamError(event.message);
         setJobErrored(true);
       }
     },
-    [],
+    [applyDeltaBuffer, flushDeltaBufferNow],
   );
 
   // Null jobId closes the EventSource. Don't open it for an already-done job:
@@ -148,47 +182,70 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
   );
 
   // ── Auto-save ────────────────────────────────────────────────────────────
+  //
+  // scheduleSave/doSave/handleMarkdownChange are wrapped in useCallback so
+  // MarkdownEditor's onChange prop (built from handleMarkdownChange below,
+  // bound to the active page) stays referentially stable across renders that
+  // don't change the active page. Without this, a fresh closure every render
+  // would defeat React.memo on MarkdownEditor — the whole point of the memo
+  // boundary is skipping re-render/re-parse for a page that hasn't changed.
 
-  function scheduleSave(pageIndex: number, markdown: string) {
-    setSavingPages((prev) => new Set(prev).add(pageIndex));
-    const existing = saveTimers.current.get(pageIndex);
-    if (existing) clearTimeout(existing);
+  const doSave = useCallback(
+    async (pageIndex: number, markdown: string) => {
+      // This value is now being persisted — no longer merely pending a debounce.
+      pendingSaves.current.delete(pageIndex);
+      saveTimers.current.delete(pageIndex);
+      try {
+        await updatePageMarkdown(jobId, pageIndex, markdown);
+        setSaveError(null);
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : "Save failed.");
+      } finally {
+        // Always clear the flag so the "Saving…" indicator never sticks.
+        setSavingPages((prev) => {
+          const next = new Set(prev);
+          next.delete(pageIndex);
+          return next;
+        });
+      }
+    },
+    [jobId],
+  );
 
-    // Remember the exact value handed in by the change handler. Reading it from
-    // `pages` here would lag one render behind — React hasn't applied the
-    // setPages from this same keystroke yet, so the last edit of a burst is lost.
-    pendingSaves.current.set(pageIndex, markdown);
-    const timer = setTimeout(() => {
-      doSave(pageIndex, markdown);
-    }, 800);
-    saveTimers.current.set(pageIndex, timer);
-  }
+  const scheduleSave = useCallback(
+    (pageIndex: number, markdown: string) => {
+      setSavingPages((prev) => new Set(prev).add(pageIndex));
+      const existing = saveTimers.current.get(pageIndex);
+      if (existing) clearTimeout(existing);
 
-  async function doSave(pageIndex: number, markdown: string) {
-    // This value is now being persisted — no longer merely pending a debounce.
-    pendingSaves.current.delete(pageIndex);
-    saveTimers.current.delete(pageIndex);
-    try {
-      await updatePageMarkdown(jobId, pageIndex, markdown);
-      setSaveError(null);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Save failed.");
-    } finally {
-      // Always clear the flag so the "Saving…" indicator never sticks.
-      setSavingPages((prev) => {
-        const next = new Set(prev);
-        next.delete(pageIndex);
-        return next;
-      });
-    }
-  }
+      // Remember the exact value handed in by the change handler. Reading it from
+      // `pages` here would lag one render behind — React hasn't applied the
+      // setPages from this same keystroke yet, so the last edit of a burst is lost.
+      pendingSaves.current.set(pageIndex, markdown);
+      const timer = setTimeout(() => {
+        doSave(pageIndex, markdown);
+      }, 800);
+      saveTimers.current.set(pageIndex, timer);
+    },
+    [doSave],
+  );
 
-  function handleMarkdownChange(pageIndex: number, value: string) {
-    setPages((prev) =>
-      prev.map((p) => (p.index === pageIndex ? { ...p, markdown: value } : p)),
-    );
-    scheduleSave(pageIndex, value);
-  }
+  const handleMarkdownChange = useCallback(
+    (pageIndex: number, value: string) => {
+      setPages((prev) =>
+        prev.map((p) => (p.index === pageIndex ? { ...p, markdown: value } : p)),
+      );
+      scheduleSave(pageIndex, value);
+    },
+    [scheduleSave],
+  );
+
+  // Bound to the active page, so it's a new reference only when the user
+  // switches pages — not on every render triggered by streaming elsewhere.
+  const handleActiveMarkdownChange = useCallback(
+    (value: string) => handleMarkdownChange(activePage, value),
+    [activePage, handleMarkdownChange],
+  );
 
   // On unmount, flush any debounced-but-unsaved edit before clearing its timer.
   // Otherwise navigating to Export within the 800 ms window silently drops the
@@ -202,6 +259,13 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
         void updatePageMarkdown(jobId, pageIndex, markdown).catch(() => {});
       });
       pending.clear();
+      // Cancel any scheduled delta-buffer flush — it's display-only state, not
+      // a save, so it needs cancelling (not flushing) to avoid a post-unmount
+      // setPages call.
+      if (flushHandle.current !== null) {
+        cancelAnimationFrame(flushHandle.current);
+        flushHandle.current = null;
+      }
     };
   }, [jobId]);
 
@@ -341,7 +405,7 @@ export function Review({ jobId, jobName, pageCount, onExport, onBack }: ReviewPr
             </div>
             <MarkdownEditor
               value={active.markdown}
-              onChange={(v) => handleMarkdownChange(activePage, v)}
+              onChange={handleActiveMarkdownChange}
               streaming={active.streaming}
               placeholder={
                 active.streaming
