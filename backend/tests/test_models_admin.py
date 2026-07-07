@@ -1,4 +1,4 @@
-"""``pull_model`` streams Ollama's NDJSON pull progress and surfaces failures (issue #138)."""
+"""``models_admin`` tests: ``runtime_status`` honesty guards (BE-21) and ``pull_model`` streaming (#138)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,32 @@ import httpx
 import pytest
 
 from marginalia.config import ProviderConfig
-from marginalia.models_admin import pull_model
+from marginalia.models_admin import pull_model, runtime_status
+
+# ── runtime_status: no base_url must never mean "ready" (BE-21) ──────────────
+
+
+def test_claude_with_no_base_url_is_reachable() -> None:
+    """Claude has no HTTP runtime to probe — presence of a default_model is enough (see claude_auth)."""
+    claude = ProviderConfig(id="claude", display_name="Claude", kind="cloud", default_model="claude-sonnet-4-6")
+    reachable, models = runtime_status(claude)
+    assert reachable is True
+    assert models == ["claude-sonnet-4-6"]
+
+
+def test_misconfigured_local_provider_with_no_base_url_is_not_ready() -> None:
+    """BE-21: a non-Claude entry with a missing base_url is broken config, not a healthy provider."""
+    broken = ProviderConfig(id="ollama", display_name="Ollama", kind="local", base_url=None)
+    assert runtime_status(broken) == (False, [])
+
+
+def test_misconfigured_cloud_provider_with_no_base_url_is_not_ready() -> None:
+    """Same guard for a cloud (non-Claude) entry missing its base_url."""
+    broken = ProviderConfig(id="gemini", display_name="Gemini", kind="cloud", base_url=None)
+    assert runtime_status(broken) == (False, [])
+
+
+# ── pull_model: stream Ollama NDJSON progress and surface failures (#138) ────
 
 
 def _provider() -> ProviderConfig:

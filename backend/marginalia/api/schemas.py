@@ -35,7 +35,8 @@ class ProvidersOut(BaseModel):
 class ProviderStatus(BaseModel):
     """Live status of one provider as seen by the UI.
 
-    ``state`` vocabulary: ``ready`` | ``no_model`` | ``unreachable`` | ``needs_key`` | ``unknown``.
+    ``state`` vocabulary: ``ready`` | ``no_model`` | ``unreachable`` | ``needs_key`` | ``invalid_key`` |
+    ``unknown``. ``invalid_key`` (BE-07): a cloud key is present but the provider rejected it.
     ``hint`` is a human-readable next step shown when the provider is not ready.
     """
 
