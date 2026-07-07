@@ -7,8 +7,8 @@ from collections.abc import Callable
 import httpx
 import pytest
 
-from marginalia.config import ProviderConfig
-from marginalia.models_admin import pull_model, runtime_status
+from marginalia.config import CLOUD_MODELS, ProviderConfig
+from marginalia.models_admin import cloud_models, pull_model, runtime_status
 
 # ── runtime_status: no base_url must never mean "ready" (BE-21) ──────────────
 
@@ -31,6 +31,24 @@ def test_misconfigured_cloud_provider_with_no_base_url_is_not_ready() -> None:
     """Same guard for a cloud (non-Claude) entry missing its base_url."""
     broken = ProviderConfig(id="gemini", display_name="Gemini", kind="cloud", base_url=None)
     assert runtime_status(broken) == (False, [])
+
+
+# ── cloud_models: curated list wins, probe is the fallback (#148) ────────────
+
+
+def test_cloud_models_prefers_curated_list_over_probe() -> None:
+    gemini = ProviderConfig(id="gemini", display_name="Gemini", kind="cloud", base_url="https://x/v1")
+    assert cloud_models(gemini, probed=["some-probed-model"]) == CLOUD_MODELS["gemini"]
+
+
+def test_cloud_models_falls_back_to_probe_when_uncurated() -> None:
+    other = ProviderConfig(id="other-cloud", display_name="Other", kind="cloud", base_url="https://x/v1")
+    assert cloud_models(other, probed=["model-a", "model-b"]) == ["model-a", "model-b"]
+
+
+def test_cloud_models_falls_back_to_empty_when_uncurated_and_unprobed() -> None:
+    other = ProviderConfig(id="other-cloud", display_name="Other", kind="cloud", base_url="https://x/v1")
+    assert cloud_models(other, probed=[]) == []
 
 
 # ── pull_model: stream Ollama NDJSON progress and surface failures (#138) ────

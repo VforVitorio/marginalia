@@ -59,6 +59,21 @@ class ProviderConfig(BaseModel):
     default_model: str | None = None
 
 
+# ponytail: curated list; fetch from the API if it drifts. Gemini's own ``/models`` endpoint lists
+# dozens of models unrelated to OCR (embeddings, text-only, deprecated previews), so the picker
+# offers this hand-picked, vision-capable subset instead of the raw probe result (issue #148).
+# Claude has no such list — it's a single subscription surface, picked via the Agent SDK, not a
+# model catalogue — so it is deliberately absent here.
+CLOUD_MODELS: dict[str, list[str]] = {
+    "gemini": [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+    ],
+}
+
+
 class Settings(BaseModel):
     """The user's live choices (``data/settings.json``), editable from the UI."""
 

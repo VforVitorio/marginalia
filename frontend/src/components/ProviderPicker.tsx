@@ -9,6 +9,11 @@
  *   - Claude: honest "unknown" — uses the `claude login` session (issue #11).
  * All shared state is lifted to App; this component fetches only the transient
  * loadable-model list on demand.
+ *
+ * Model selection (`ProviderRow.handleRowClick` / `ModelList`) is provider-kind-agnostic: any
+ * row whose `ProviderStatus.models` has more than one entry expands into a picker on click,
+ * local or cloud alike. A ready Gemini row gets the same list UI once the backend curates its
+ * models (`config.CLOUD_MODELS`, issue #148) — no special-casing needed here.
  */
 
 import { useEffect, useRef, useState } from "react";
