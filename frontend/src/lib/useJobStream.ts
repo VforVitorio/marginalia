@@ -22,6 +22,7 @@ export function useJobStream(
   jobId: string | null,
   onEvent: (event: SseEvent) => void,
   onClose?: () => void,
+  onError?: () => void,
 ): void {
   // Stable refs so the effect doesn't re-run when callback identity changes.
   const onEventRef = useRef(onEvent);
@@ -30,15 +31,17 @@ export function useJobStream(
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
   useEffect(() => {
     if (!jobId) return;
 
     const cleanup = connectJobStream(jobId, {
       onEvent: (ev) => onEventRef.current(ev),
+      // onClose = terminal (run finished); onError = network drop (interrupted).
       onClose: () => onCloseRef.current?.(),
-      onError: () => {
-        // Error is surfaced via onClose; callers can set an error state there.
-      },
+      onError: () => onErrorRef.current?.(),
     });
 
     return cleanup;
