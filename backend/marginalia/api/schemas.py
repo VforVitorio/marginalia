@@ -74,6 +74,19 @@ class KeyBody(BaseModel):
     api_key: str
 
 
+class ScannedPdfOut(BaseModel):
+    """One PDF found in the scan folder: its path relative to the scan root and its notebook name."""
+
+    rel_path: str
+    name: str
+
+
+class ScanOut(BaseModel):
+    """Response for ``GET /scan``: the PDFs under the configured Scribe scan folder."""
+
+    pdfs: list[ScannedPdfOut]
+
+
 class CreateJobOut(BaseModel):
     """Response for ``POST /jobs``: the new job id and the number of pages detected."""
 

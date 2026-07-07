@@ -66,6 +66,24 @@ def test_unknown_job_is_404(tmp_path, monkeypatch) -> None:
     assert client.get("/api/jobs/does-not-exist").status_code == 404
 
 
+def test_scan_lists_pdfs_in_scan_folder(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    client = TestClient(app)
+
+    # No scan folder configured yet → 400 (not a 404 or a silent empty list).
+    assert client.get("/api/scan").status_code == 400
+
+    scan_root = tmp_path / "scribe"
+    (scan_root / "Math").mkdir(parents=True)
+    (scan_root / "Math" / "Calculus.pdf").write_bytes(_one_page_pdf())
+    (scan_root / "loose.pdf").write_bytes(_one_page_pdf())
+    client.put("/api/settings", json={"scan_folder": str(scan_root)})
+
+    pdfs = client.get("/api/scan").json()["pdfs"]
+    listed = {entry["rel_path"]: entry["name"] for entry in pdfs}
+    assert listed == {"Math/Calculus.pdf": "Calculus", "loose.pdf": "loose"}
+
+
 def test_loose_upload_exports_under_target_dir(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     client = TestClient(app)
