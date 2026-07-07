@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.4](https://github.com/VforVitorio/marginalia/compare/v1.1.3...v1.1.4) (2026-07-05)
+
+
+### Documentation
+
+* **demo:** add 8:5 video poster stills (EN/ES) ([cf87c33](https://github.com/VforVitorio/marginalia/commit/cf87c330cd5db99f0ca0f63396bfbd5b648e69ec))
+* **demo:** add 8:5 video poster stills (EN/ES) ([31fd150](https://github.com/VforVitorio/marginalia/commit/31fd150bc5b65cea4667c6ed226712211801dc46))
+* **demo:** add landing page hero screenshots (EN/ES) ([8b1ed45](https://github.com/VforVitorio/marginalia/commit/8b1ed4579aaecc0c84738d4cdc79543e8594867e))
+* **demo:** add landing page hero screenshots (EN/ES) ([4666b48](https://github.com/VforVitorio/marginalia/commit/4666b48b8a2139ff1b2f38b39036ab7de1d0c8d3))
+
 ## [1.1.3](https://github.com/VforVitorio/marginalia/compare/v1.1.2...v1.1.3) (2026-06-29)
 
 
