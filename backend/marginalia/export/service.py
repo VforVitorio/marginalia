@@ -6,6 +6,7 @@ The only place in the export path that touches the filesystem and the templates 
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
@@ -66,16 +67,17 @@ def export_notes(sources: list[NoteSource], strategies: list[Strategy], vault_ro
     crafted source folder (``..`` in the upload filename or target dir). The API layer maps it to a 400.
     """
     env = _environment()
-    root = vault_root.resolve()
+    root = os.path.realpath(vault_root)
     written: list[Path] = []
     for plan in build_plan(sources, strategies):
-        # Resolve ONCE, validate the resolved path, then use that same validated path for every
-        # filesystem op below — a crafted "../" source folder must not escape the vault (the API
-        # maps the raise to a 400). Keeping all I/O on the validated `dest` also keeps the taint
-        # sanitized end to end (no unchecked path reaches a read/write sink).
-        dest = (vault_root / Path(plan.dest_path)).resolve()
-        if not dest.is_relative_to(root):
+        # Normalize with realpath, then require the result to stay under the vault root — a crafted
+        # "../" source folder must not escape it (the API maps the raise to a 400). realpath +
+        # startswith(root + sep) is the containment barrier; every filesystem op below runs on the
+        # `dest` derived from this checked string, so no unvalidated path reaches a read/write sink.
+        checked = os.path.realpath(os.path.join(root, str(plan.dest_path)))
+        if checked != root and not checked.startswith(root + os.sep):
             raise ValueError(f"Note path escapes the vault: {plan.dest_path}")
+        dest = Path(checked)
         # BE-06: index notes accumulate — merge with the existing file so a second export into the
         # same folder keeps earlier links; content notes overwrite (re-exporting replaces the note).
         write_plan = plan
