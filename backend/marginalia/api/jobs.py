@@ -65,7 +65,15 @@ async def stream_job(
     store: JobStore = Depends(get_store),
     engine: OCREngine = Depends(get_active_engine),
 ) -> StreamingResponse:
-    _load_or_404(store, job_id)
+    record = _load_or_404(store, job_id)
+    if record.status == "running":
+        # A stream is already OCRing this job (e.g. a second tab). Two runners would race the
+        # non-atomic job.json writes and double the OCR cost. Resuming a stopped job is fine —
+        # run_ocr resets a disconnected job back to "pending" (see jobs/service.py).
+        raise HTTPException(
+            status_code=409,
+            detail="This job is already being transcribed. Close the other tab or wait for it to finish.",
+        )
     return StreamingResponse(sse_stream(run_ocr(store, engine, job_id)), media_type="text/event-stream")
 
 
