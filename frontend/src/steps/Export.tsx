@@ -1,9 +1,11 @@
 /**
  * Export step — vault path confirmation, strategy toggles, one-click export.
  *
- * Reads vault_path and strategies from settings (already loaded by App).
- * Allows overriding vault_path for this export without persisting it.
- * On success shows the written-files summary.
+ * Pre-fills vault_path and strategies from settings (already loaded by App).
+ * On a successful export, persists the vault path and strategies back via
+ * `updateSettings` so the next session (and any later visit to this step)
+ * remembers them (issue #146 / FE-09) — target_dir stays per-export, it isn't
+ * a durable preference.
  *
  * Vault-path suggestions: fetched from the backend on mount and on the
  * "Detect" button click. Rendered as clickable chips; clicking fills the
@@ -11,7 +13,13 @@
  */
 
 import { useEffect, useState } from "react";
-import { exportJob, getVaultSuggestions, type ExportResult, type Settings } from "../api/client";
+import {
+  exportJob,
+  getVaultSuggestions,
+  updateSettings,
+  type ExportResult,
+  type Settings,
+} from "../api/client";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { Spinner } from "../components/Spinner";
 import { SuggestionChips } from "../components/SuggestionChips";
@@ -22,9 +30,13 @@ interface ExportProps {
   settings: Settings | null;
   onBack: () => void;
   onDone: () => void;
+  /** Called after a successful export with the freshly persisted settings, so
+   * App's copy stays in sync (e.g. re-entering Export in the same session
+   * shows the just-saved vault path instead of the stale pre-export one). */
+  onSettingsChange?: (settings: Settings) => void;
 }
 
-export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps) {
+export function Export({ jobId, jobName, settings, onBack, onDone, onSettingsChange }: ExportProps) {
   const [vaultPath, setVaultPath] = useState(settings?.vault_path ?? "");
   const [targetDir, setTargetDir] = useState("");
   const [strategies, setStrategies] = useState<string[]>(
@@ -69,16 +81,36 @@ export function Export({ jobId, jobName, settings, onBack, onDone }: ExportProps
     setExporting(true);
     setError(null);
     try {
+      const trimmedVaultPath = vaultPath.trim();
       const res = await exportJob(jobId, {
-        vault_path: vaultPath.trim(),
+        vault_path: trimmedVaultPath,
         strategies,
         target_dir: targetDir.trim() || undefined,
       });
       setResult(res);
+      persistExportSettings(trimmedVaultPath, strategies);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Export failed.");
     } finally {
       setExporting(false);
+    }
+  }
+
+  /**
+   * Remembers the vault path + strategies for next session (issue #146).
+   * Fires only after a successful export, so a half-typed or invalid path
+   * never gets persisted. Best-effort: the export already succeeded, so a
+   * persistence failure is silently dropped rather than surfaced as an error.
+   */
+  async function persistExportSettings(vaultPathToSave: string, strategiesToSave: string[]) {
+    try {
+      const updated = await updateSettings({
+        vault_path: vaultPathToSave,
+        strategies: strategiesToSave,
+      });
+      onSettingsChange?.(updated);
+    } catch {
+      // Best-effort — see docstring above.
     }
   }
 
