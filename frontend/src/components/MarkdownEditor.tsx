@@ -17,7 +17,7 @@
  *  placeholder — muted text shown when value is empty
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -31,7 +31,11 @@ export interface MarkdownEditorProps {
   placeholder?: string;
 }
 
-export function MarkdownEditor({
+// Memoised: while one page streams, Review re-renders on every token (even
+// with the rAF buffer, at up to 60/s). Without this boundary, a page whose
+// markdown hasn't changed would still re-run the full remark/KaTeX pipeline
+// on each of those renders — the actual cost (see MarkdownBody below).
+export const MarkdownEditor = memo(function MarkdownEditor({
   value,
   onChange,
   streaming = false,
@@ -119,7 +123,7 @@ export function MarkdownEditor({
       </div>
     </div>
   );
-}
+});
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -151,8 +155,15 @@ function StreamingText({ text }: { text: string }) {
  * (no @tailwindcss/typography required). Covers headings, paragraphs,
  * lists, blockquotes (including GitHub-style callouts), inline/block code,
  * tables, horizontal rules, and links.
+ *
+ * Belt-and-braces memo: react-markdown v9 re-runs the full unified pipeline
+ * (remark-gfm, remark-math, rehype-katex) synchronously on every render with
+ * no internal memoisation of its own — this is the actual cost the
+ * MarkdownEditor memo boundary exists to avoid. Memoising here too means even
+ * an in-editor state change that isn't a markdown change (e.g. toggling
+ * `editing`) can't force a re-parse.
  */
-function MarkdownBody({ markdown }: { markdown: string }) {
+const MarkdownBody = memo(function MarkdownBody({ markdown }: { markdown: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
@@ -162,7 +173,7 @@ function MarkdownBody({ markdown }: { markdown: string }) {
       {markdown}
     </ReactMarkdown>
   );
-}
+});
 
 /**
  * Custom renderers that produce readable prose without @tailwindcss/typography.
