@@ -158,9 +158,12 @@ async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  // `...init` first, `headers` last: if `init` carries its own `headers` key,
+  // spreading `init` before `headers` lets the merged object win instead of
+  // being clobbered by init's raw headers (issue #144 / FE-15).
   const response = await apiFetchRaw(`/api${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
   });
 
   // 204 No Content → return undefined cast
