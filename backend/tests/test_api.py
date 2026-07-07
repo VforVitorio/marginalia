@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from marginalia.api.deps import get_active_engine
 from marginalia.api.main import app
+from marginalia.config import CLOUD_MODELS
 from marginalia.ocr.engine import EngineInfo
 
 
@@ -170,9 +171,27 @@ def test_set_cloud_key_makes_gemini_ready(tmp_path, monkeypatch) -> None:
     assert client.get("/api/providers/status").json()["providers"][0]["state"] == "needs_key"
     saved = client.post("/api/providers/gemini/key", json={"api_key": "a-real-key"}).json()
     assert saved["state"] == "ready"  # key entered in the UI, then confirmed valid by the probe
-    assert saved["models"] == ["gemini-2.0-flash"]  # BE-07: the probe's model list, not just current_model
+    # #148: the curated model list, not the raw probe result — the picker offers a hand-picked,
+    # vision-capable set instead of whatever Gemini's own catalogue endpoint happens to return.
+    assert saved["models"] == CLOUD_MODELS["gemini"]
+    assert len(saved["models"]) > 1  # a real picker, not just the default model
     # persisted across requests (settings.json overlay)
     assert client.get("/api/providers/status").json()["providers"][0]["state"] == "ready"
+
+
+def test_uncurated_cloud_provider_falls_back_to_probed_models(tmp_path, monkeypatch) -> None:
+    """#148: a cloud provider without a curated entry still gets *some* model list (the raw probe)."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "providers.toml").write_text(
+        '[[providers]]\nid="other-cloud"\ndisplay_name="Other"\nkind="cloud"\nbase_url="https://x/v1"\n'
+        'api_key="a-real-key"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("marginalia.api.providers.runtime_status", lambda provider: (True, ["model-a", "model-b"]))
+    client = TestClient(app)
+    status = client.get("/api/providers/status").json()["providers"][0]
+    assert status["state"] == "ready"
+    assert status["models"] == ["model-a", "model-b"]
 
 
 def test_gemini_bad_key_reports_invalid_key(tmp_path, monkeypatch) -> None:

@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from marginalia import lms_bridge
-from marginalia.config import ProviderConfig
+from marginalia.config import CLOUD_MODELS, ProviderConfig
 
 _HTTP_STATUS_TIMEOUT = 4.0
 
@@ -49,6 +49,18 @@ def runtime_status(provider: ProviderConfig) -> tuple[bool, list[str]]:
 def list_models(provider: ProviderConfig) -> list[str]:
     """List the models a provider reports. Empty list if it can't be reached."""
     return runtime_status(provider)[1]
+
+
+def cloud_models(provider: ProviderConfig, probed: list[str]) -> list[str]:
+    """Models to offer in the picker for a reachable cloud provider (issue #148).
+
+    Prefers the curated ``config.CLOUD_MODELS`` entry (hand-picked, vision-capable models) over
+    *probed* — the raw list the live ``/models`` probe returned — because a cloud provider's own
+    catalogue endpoint (Gemini in particular) mixes in models that are useless for OCR. Falls back
+    to *probed* for any cloud provider we haven't curated yet, so a new entry in ``providers.toml``
+    still gets *some* model list instead of none.
+    """
+    return CLOUD_MODELS.get(provider.id) or probed
 
 
 def supports_pull(provider: ProviderConfig) -> bool:

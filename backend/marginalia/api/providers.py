@@ -27,6 +27,7 @@ from marginalia.config import (
     save_settings,
 )
 from marginalia.models_admin import (
+    cloud_models,
     ensure_loaded,
     ensure_runtime_ready,
     list_models,
@@ -117,9 +118,12 @@ def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderSt
         # BE-07: a key being *present* isn't the same as being *valid* — probe it with the same
         # cheap GET /models call the local branch already makes (no tokens spent), so a
         # revoked/typo'd key is caught here instead of failing later at OCR time.
-        reachable, models = runtime_status(provider)
+        reachable, probed_models = runtime_status(provider)
         if not reachable:
             return status(False, [], "invalid_key", f"{provider.display_name} rejected the API key.")
+        # #148: offer the curated model list (falls back to the probe) so the picker shows more
+        # than just the default model — the same "pick from a list" UX local providers already have.
+        models = cloud_models(provider, probed_models)
         return status(True, models or ([current] if current else []), "ready", "")
     reachable, models = runtime_status(provider)
     if not reachable:
