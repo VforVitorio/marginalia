@@ -71,3 +71,54 @@ export function connectJobStream(jobId: string, handlers: SseHandlers): () => vo
 //   import { useJobStream } from "../lib/sse"
 // continue to work without any change.
 export { useJobStream } from "./useJobStream";
+
+// ── Raw fetch-stream SSE reader (for POST-based streams) ────────────────────
+
+/**
+ * Read a raw fetch `Response` body as an SSE stream and yield parsed JSON events.
+ *
+ * `EventSource` (used by `connectJobStream` above) only supports GET requests and
+ * handles frame buffering natively. POST-based streams — e.g. the model-pull
+ * endpoint, which needs a JSON body — have no `EventSource` equivalent, so this
+ * does the same `data: <json>\n\n` framing by hand. Both the job stream and the
+ * pull stream now share the `{ type: ... }` envelope (see docs/research/
+ * AUDIT_FRONTEND_ARCHITECTURE.md AR-02), even though they're consumed through
+ * two different transports.
+ */
+export async function* readSseStream<T>(response: Response): AsyncGenerator<T> {
+  const body = response.body;
+  if (!body) return;
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const event = parseSseFrame<T>(buffer.slice(0, boundary));
+      buffer = buffer.slice(boundary + 2);
+      if (event !== null) yield event;
+      boundary = buffer.indexOf("\n\n");
+    }
+  }
+}
+
+/** Parse one SSE frame's `data:` lines into its JSON payload, or `null` if empty/malformed. */
+function parseSseFrame<T>(frame: string): T | null {
+  const dataLines = frame
+    .split("\n")
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice("data:".length).trimStart());
+  if (dataLines.length === 0) return null;
+
+  try {
+    return JSON.parse(dataLines.join("\n")) as T;
+  } catch {
+    return null;
+  }
+}
