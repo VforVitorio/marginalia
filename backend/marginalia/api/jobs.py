@@ -10,6 +10,7 @@ from typing import cast
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 from marginalia.api.deps import get_active_engine, get_store
 from marginalia.api.schemas import (
@@ -55,7 +56,8 @@ async def create_job(
 ) -> CreateJobOut:
     """Create a job from an uploaded PDF (``file``) or a scanned one (``rel_path``)."""
     notebook = await _notebook_from_request(file, rel_path)
-    record = store.create(notebook)
+    # BE-05: store.create writes every page PNG + job.json; off the loop so it can't stall live SSE streams.
+    record = await run_in_threadpool(store.create, notebook)
     return CreateJobOut(job_id=record.job_id, name=record.name, pages=len(record.pages))
 
 
@@ -125,7 +127,8 @@ async def _notebook_from_request(file: UploadFile | None, rel_path: str | None) 
         data = await file.read()
         filename = file.filename or "upload.pdf"
         try:
-            pages = render_pdf(data)
+            # BE-05: PyMuPDF rasterizes every page (CPU-bound); off the loop so it can't stall live SSE streams.
+            pages = await run_in_threadpool(render_pdf, data)
         # pymupdf raises FileDataError (a RuntimeError) / ValueError on a non-PDF — a client error, not a 500.
         except (ValueError, RuntimeError):
             raise HTTPException(status_code=400, detail="Could not read the PDF.") from None
@@ -134,7 +137,9 @@ async def _notebook_from_request(file: UploadFile | None, rel_path: str | None) 
         return Notebook(name=Path(filename).stem, source_rel_path=Path(filename).name, pages=pages)
     if rel_path:
         root = _scan_root()
-        return load_notebook(_safe_join(root, rel_path), root=root)
+        path = _safe_join(root, rel_path)
+        # BE-05: load_notebook rasterizes the scanned PDF; off the loop so it can't stall live SSE streams.
+        return await run_in_threadpool(load_notebook, path, root)
     raise HTTPException(status_code=400, detail="Provide a file or a rel_path.")
 
 
