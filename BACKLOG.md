@@ -34,3 +34,52 @@ it here and move on. None of this is built without being asked for explicitly.
 - **Non-dev packaging / one-click launch.** Current launch is dev-shaped (FastAPI + Vite). Before a broad
   push to the Obsidian / Kindle Scribe communities (non-developers), ship a packaged installer or a
   single-command/single-binary start. Biggest adoption barrier for the non-dev audience.
+
+## Domain feature ideas (handwriting → Obsidian workflow, noted 2026-07-07)
+Not built — noted per the golden rule. These come from the workflow's three truths: OCR of handwriting
+has errors, sketches get lost, and the scan is the ground truth. Liked by the user; candidates for the
+future features-planning session.
+
+Top picks (differentiate from a plain `.txt`; cheap→medium, no big refactor):
+- **Embed the source page image in the exported note** — write `![[page_n.png]]` beside the transcription
+  (Obsidian attachment). For handwriting the scan IS the source of truth; keeps provenance so you can
+  always check the Markdown against your own writing. The PNG is already on disk. Cheapest, strongest.
+- **Low-confidence flagging in the review loop** — the model marks uncertain words/regions so review
+  jumps to likely errors instead of re-reading everything. Feasibility depends on model confidence
+  signal; approximate with a second "mark what's uncertain" pass on Claude/Qwen.
+- **Custom vocabulary / glossary injected into the OCR prompt** — the user's names, jargon, course terms
+  (per vault or per notebook). Biggest accuracy lever for the least effort (prompt injection, no fine-tune).
+
+Second tier:
+- **YAML frontmatter with provenance + date** — source notebook/Scribe folder, OCR model, extracted date →
+  exports become queryable in Dataview and sortable (journaling/lecture use). Complements the planned
+  `dataview` strategy. Date can often come from PDF metadata (below) instead of OCR.
+- **Re-OCR a single page with another model** — recover one bad page with the cloud model without redoing
+  the whole notebook. Reuses the decoupled runner (#147).
+- **Re-import = update, not duplicate** — the Scribe notebook is a living document; re-exporting an edited
+  notebook should update/merge the existing note, not create `Notes 2.md`. Related to the wikilinks
+  overwrite fix (#137).
+- **Non-text regions: Mermaid for diagrams, user's choice for freeform drawings** — structured
+  diagrams/flowcharts/trees/tables always recreated as **Mermaid / Markdown tables / callouts**
+  (editable, Obsidian-native, never an image crop). For freeform sketches the model can't faithfully
+  emulate, detect them and **ask the user how to handle drawings** ("drawings detected — recreate or
+  embed as an image crop?"), so they decide per notebook; default/fallback is an embedded `![[fig_n.png]]`
+  crop. More ambitious; the thing a `.txt` can never do.
+
+## Signal in the Scribe PDF (verified against a real export, 2026-07-07)
+Scanned a real 11-page Scribe export (`S07.1-2026-07-07-17-01.pdf`) with PyMuPDF. Findings — some the
+opposite of what was assumed:
+- **PDF metadata is EMPTY.** `doc.metadata` title/author/creator/producer/**creationDate/modDate** all `''`.
+  There is NO date/title to harvest from the PDF itself — the "date from metadata" idea is dead for this
+  export style.
+- **The filename is the real signal.** `S07.1-2026-07-07-17-01.pdf` = `<name>-<YYYY-MM-DD-HH-MM>.pdf`, i.e.
+  notebook title + export date/time. Parse the filename for `created:` + a clean title (verify the pattern
+  is the Scribe's, not just this user's naming, before relying on it).
+- **The "text layer" is just page-number footers** ("1 de 11", ~7 chars/page), NOT a transcription. So a
+  `get_text()`-non-empty check is a false positive for native convert-to-text — it must exclude the
+  `N de M` footer. This export did not use native convert; it's pure handwriting (1 image per page).
+- **Minor (quality, not speed):** each page is one embedded grayscale image at 1860×2480 px, while our
+  200-DPI `get_pixmap` renders 1654×2339 — we downscale ~11% and re-encode. Feeding the OCR the native
+  image (or simply raising the render DPI to ~230) gives a sharper input. OCR dominates wall-clock, so this
+  changes nothing about throughput. Prefer a DPI bump over `get_images` (which adds colorspace / multi-image
+  / mask handling for a marginal gain).
