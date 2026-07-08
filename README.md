@@ -13,11 +13,11 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="Platforms">
-  <a href="https://vforvitorio.github.io/marginalia/"><img src="https://img.shields.io/badge/Kindle%20Scribe-→%20Obsidian-6c5ce7" alt="Kindle Scribe to Obsidian"></a>
+  <a href="https://marginalia.is-a.dev/"><img src="https://img.shields.io/badge/Kindle%20Scribe-→%20Obsidian-6c5ce7" alt="Kindle Scribe to Obsidian"></a>
 </p>
 
 <p align="center">
-  <b><a href="https://vforvitorio.github.io/marginalia/">Website</a></b> ·
+  <b><a href="https://marginalia.is-a.dev/">Website</a></b> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
   <a href="docs/demo/marginalia-demo.mp4">Demo video</a>
 </p>
@@ -102,7 +102,7 @@ Edit, restart the backend, done.
 
 ## Status
 
-**Complete and hardened.** The whole flow — import → OCR (local or cloud) → side-by-side review → export to Obsidian — works end-to-end (that's the demo above), with a one-command install and a live [website](https://vforvitorio.github.io/marginalia/).
+**Complete and hardened.** The whole flow — import → OCR (local or cloud) → side-by-side review → export to Obsidian — works end-to-end (that's the demo above), with a one-command install and a live [website](https://marginalia.is-a.dev/).
 
 Past the MVP, it's been through a full code-audit remediation: data-safe autosave, OCR that runs in a decoupled background task (survives disconnects, multiple tabs tail one run, resumes from disk), honest provider/model status, atomic writes, and a backend + frontend test suite that runs in CI on every PR. Architecture and conventions live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md).
 
