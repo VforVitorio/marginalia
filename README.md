@@ -2,9 +2,25 @@
   <img src="docs/logo.svg" alt="marginalia" width="200">
 </p>
 
-# marginalia
+<h1 align="center">marginalia</h1>
 
-Turn the notebooks you write by hand on your Kindle Scribe into Markdown you can actually use in Obsidian.
+<p align="center">
+  <em>Turn the notebooks you write by hand on your Kindle Scribe into Markdown you can actually use in Obsidian.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/VforVitorio/marginalia/actions/workflows/ci.yml"><img src="https://github.com/VforVitorio/marginalia/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="Platforms">
+  <a href="https://vforvitorio.github.io/marginalia/"><img src="https://img.shields.io/badge/Kindle%20Scribe-→%20Obsidian-6c5ce7" alt="Kindle Scribe to Obsidian"></a>
+</p>
+
+<p align="center">
+  <b><a href="https://vforvitorio.github.io/marginalia/">Website</a></b> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="docs/demo/marginalia-demo.mp4">Demo video</a>
+</p>
 
 You write by hand on the Scribe, export the notebook as a PDF, and marginalia does the boring part: it runs OCR over your handwriting, lets you fix whatever the OCR got wrong, and drops the result into your vault — keeping the folder structure you already use on the device.
 
@@ -17,28 +33,30 @@ The name comes from *marginalia*, the notes people used to scribble in the margi
   <em>Import a Scribe PDF → OCR the handwriting (even math, as KaTeX) → review side-by-side → export to your Obsidian vault. <a href="docs/demo/marginalia-demo.mp4">full-quality video</a></em>
 </p>
 
+## What it does
+
+- **Local OCR** with Qwen3-VL (2B or 4B) through Ollama or LM Studio. Runs on an 8 GB GPU, nothing leaves your machine.
+- **Cloud OCR** when you want it — Claude (through your subscription, no API key) or Gemini (free tier), with a model picker. Good for the pages the local model chokes on.
+- **A review screen**: your original page on one side, the transcription on the other. Edits auto-save as you type; fix the mistakes before anything touches your vault.
+- **Folder structure carries over**. Your Scribe folders become folders and `[[wikilinks]]` in Obsidian — your call. Handwritten math renders as KaTeX.
+- **Everything's a button.** Switching models, pulling a new one, local vs cloud, exporting — no terminal once it's running.
+
 ## Kindle Scribe only (for now)
 
 This is built for the Kindle Scribe and nothing else. No reMarkable, no Apple Notes, no Samsung Notes. If you use another device, marginalia won't help you yet — and there are tools that already do this well for those (Scrybble for reMarkable, for instance).
 
 It's not laziness about portability: export quirks differ enough between devices that "support everything" usually ends up as "support nothing well." Scribe first.
 
-## What it does (MVP)
-
-- Local OCR with Qwen3-VL (2B or 4B) through Ollama or LM Studio. Runs on an 8 GB GPU.
-- Cloud OCR when you want it — Claude (through your subscription, no API key) or Gemini (free tier). Good for the pages the local model chokes on.
-- A review screen: your original page on one side, the transcription on the other. Fix the mistakes before anything touches your vault.
-- Folder structure carries over. Your Scribe folders become folders and wikilinks in Obsidian — your call.
-- Everything's a button. Switching models, pulling a new one, local vs cloud, exporting — no terminal once it's running.
-
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Backend | Python 3.12 + uv, FastAPI, PyMuPDF, Ollama/LM Studio, Claude Agent SDK, Gemini |
-| Frontend | Vite + React + Tailwind + GSAP |
-| OCR | Qwen3-VL (local) or Claude/Gemini Vision (cloud) |
-| Export | Jinja2 + Markdown with frontmatter |
+| Backend | Python 3.12+ · uv · FastAPI · Pydantic v2 · PyMuPDF |
+| OCR | Qwen3-VL via Ollama / LM Studio (local) · Claude Agent SDK · Gemini (cloud) |
+| Frontend | Vite · React · TypeScript · Tailwind · GSAP |
+| Streaming | Server-Sent Events (decoupled background runner) |
+| Export | Jinja2 · Markdown with frontmatter, wikilinks, KaTeX |
+| Quality | Ruff · mypy · pytest · vitest · CI on every PR |
 
 ## Getting started
 
@@ -67,11 +85,11 @@ For frontend work, run the API and the Vite dev server separately: `npm run dev`
 
 ## How it works
 
-1. Export from the Scribe: Notebooks → hold the cover → Export/Share → PDF. Save it to your synced folder or drop it straight into the app.
-2. Import: drag the PDF in, or point marginalia at your synced folder and pick from what's there.
-3. Pick a backend: local for privacy, cloud for the hard pages. One click.
-4. Review: page by page, fix what the OCR misread. A normal notebook takes a couple of minutes.
-5. Export: choose how it lands in Obsidian (mirror folders, wikilinks), hit export.
+1. **Export from the Scribe**: Notebooks → hold the cover → Export/Share → PDF. Save it to your synced folder or drop it straight into the app.
+2. **Import**: drag the PDF in, or point marginalia at your synced folder and pick from what's there.
+3. **Pick a backend**: local for privacy, cloud for the hard pages. One click.
+4. **Review**: page by page, fix what the OCR misread. A normal notebook takes a couple of minutes. OCR keeps running in the background even if you close the tab — reopen and it picks up where it was.
+5. **Export**: choose how it lands in Obsidian (mirror folders, wikilinks), hit export.
 
 ## Customizing the OCR system prompt
 
@@ -84,24 +102,13 @@ Edit, restart the backend, done.
 
 ## Status
 
-The MVP works end-to-end — import a Scribe PDF, OCR it (local or cloud), review side-by-side, export to your vault (that's the demo above). What's left before the first tagged release is polish: frontend linting, mobile/responsive tuning, a one-command install, and an end-to-end verification pass. Architecture and conventions live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md).
+**Complete and hardened.** The whole flow — import → OCR (local or cloud) → side-by-side review → export to Obsidian — works end-to-end (that's the demo above), with a one-command install and a live [website](https://vforvitorio.github.io/marginalia/).
 
-## Trademarks
-
-Kindle and Kindle Scribe are trademarks of Amazon. Obsidian is a trademark of Obsidian Foundry. marginalia is not affiliated with, endorsed by, or sponsored by either — the names are here so you know what works with what.
-
-## License
-
-MIT. Use it, fork it, sell it, whatever — just keep the notice. No warranty. See [LICENSE](LICENSE).
-
-## Contributing
-
-PRs welcome, Scribe-only. Issues about other devices will be closed — not out of spite, just scope. Fork, branch, follow the conventions in [CLAUDE.md](CLAUDE.md), open a PR.
+Past the MVP, it's been through a full code-audit remediation: data-safe autosave, OCR that runs in a decoupled background task (survives disconnects, multiple tabs tail one run, resumes from disk), honest provider/model status, atomic writes, and a backend + frontend test suite that runs in CI on every PR. Architecture and conventions live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md).
 
 ## Roadmap (later, maybe)
 
-- One-command install (and maybe a packaged build)
-- Process multiple notebooks at once
+- Process multiple notebooks at once (the runner is already decoupled to allow it)
 - Pull in Kindle highlights (`My Clippings.txt`)
 - Custom export templates
 - Full-text search across exports
@@ -112,14 +119,22 @@ PRs welcome, Scribe-only. Issues about other devices will be closed — not out 
 
 **Why not just use the Scribe's built-in "Convert to text"?** Amazon's conversion emails you a flat `.txt`. marginalia drops the result straight into Obsidian — your Scribe folder structure mirrored, optional wikilinks, real Markdown (headings, tables, callouts, KaTeX math) — and lets you fix the OCR before it ever touches your vault. It can also run fully local, so nothing leaves your machine.
 
-**Does it work with reMarkable, iPad, etc.?** Not yet, and not for the MVP. This is for the Kindle Scribe. If you use another device, there are better tools for it (Scrybble for reMarkable, Apple Importer for Apple Notes).
+**Does it work with reMarkable, iPad, etc.?** Not yet. This is for the Kindle Scribe. If you use another device, there are better tools for it (Scrybble for reMarkable, Apple Importer for Apple Notes).
 
 **Do I need an API key?** For local OCR (Ollama), no. For cloud, you either use your Claude subscription (no API key) or a free Gemini key from AI Studio.
 
-**Does it run on Mac/Windows/Linux?** Yes — pure-Python backend, web frontend. Run on Windows, macOS, and Linux.
+**Does it run on Mac/Windows/Linux?** Yes — pure-Python backend, web frontend. Runs on Windows, macOS, and Linux.
 
 **What if the OCR is bad?** That's what the review is for: you see the original image and the text, and you edit it before exporting. If it's still bad, run that page through a cloud backend (Claude or Gemini) — they hold up better on messy handwriting.
 
-## Contact
+## Contributing
 
-Issues for bugs and (Scribe-only) feature requests. Discussions for workflows and ideas. No Discord yet — maybe when there's a reason for one.
+PRs welcome, Scribe-only. Issues about other devices will be closed — not out of spite, just scope. Fork, branch, follow the conventions in [CLAUDE.md](CLAUDE.md), open a PR. CI (`test` / `lint` / `typecheck` / `frontend-build`) must be green.
+
+## Trademarks
+
+Kindle and Kindle Scribe are trademarks of Amazon. Obsidian is a trademark of Obsidian Foundry. marginalia is not affiliated with, endorsed by, or sponsored by either — the names are here so you know what works with what.
+
+## License
+
+MIT. Use it, fork it, sell it, whatever — just keep the notice. No warranty. See [LICENSE](LICENSE).
