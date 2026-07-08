@@ -171,6 +171,21 @@
     .term-copy:active { transform: scale(.94); }
     .term-copy svg { width: 13px; height: 13px; }
     .term-copy .ico-tick { display: none; }
+
+    /* OS install picker */
+    .os-picker { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; margin: 1.75rem auto 0; max-width: 620px; }
+    .os-btn { position: relative; flex: 1 1 150px; min-width: 138px; max-width: 190px; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: 1.1rem .75rem; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px; color: var(--text); cursor: pointer; font: inherit; transition: border-color .15s, background .15s, transform .1s; }
+    .os-btn:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+    .os-btn:active { transform: scale(.97); }
+    .os-ico { width: 26px; height: 26px; color: var(--text); transition: color .15s; }
+    .os-btn:hover .os-ico { color: var(--accent-light); }
+    .os-name { font-weight: 600; font-size: .95rem; }
+    .os-sub { font-size: .72rem; color: var(--text-3); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+    .os-done { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: .4rem; background: var(--surface); border-radius: 14px; color: #5aa86a; font-weight: 600; font-size: .92rem; opacity: 0; pointer-events: none; transition: opacity .15s; }
+    .os-done svg { width: 16px; height: 16px; }
+    .os-btn.copied { border-color: #5aa86a; }
+    .os-btn.copied .os-done { opacity: 1; }
+    .os-hint { color: var(--text-3); font-size: .82rem; margin-top: .95rem; }
     .term-copy.copied { color: #5aa86a; border-color: #5aa86a; }
     .term-copy.copied .ico-copy { display: none; }
     .term-copy.copied .ico-tick { display: inline; }
@@ -313,6 +328,27 @@
       <div class="wrap inner">
         <h2 class="section-title" data-i18n="install.title">Get started</h2>
         <p class="lead" data-i18n="install.lead">One command installs everything and launches the app on your machine.</p>
+        <div class="os-picker" role="group" aria-label="Copy the install command for your operating system">
+          <button class="os-btn" type="button" aria-label="Copy the macOS install command" data-copy="curl -fsSL https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.sh | bash">
+            <svg class="os-ico" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M10.9 8.55c0-1.6 1.3-2.4 1.36-2.44-.74-1.08-1.9-1.23-2.3-1.24-.98-.1-1.9.57-2.4.57-.5 0-1.26-.56-2.07-.55-1.07.02-2.05.62-2.6 1.58-1.1 1.92-.28 4.76.8 6.32.53.76 1.16 1.62 1.98 1.59.8-.03 1.1-.51 2.06-.51.96 0 1.23.51 2.07.5.86-.02 1.4-.78 1.92-1.55.6-.88.85-1.73.86-1.77-.02-.01-1.65-.64-1.65-2.51zM9.36 4.13c.44-.53.73-1.27.65-2.01-.63.03-1.4.42-1.85.95-.4.47-.76 1.22-.66 1.95.7.05 1.42-.36 1.86-.89z"/></svg>
+            <span class="os-name">macOS</span>
+            <span class="os-sub">curl · bash</span>
+            <span class="os-done"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5L6.5 12L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="os.copied">Copied</span></span>
+          </button>
+          <button class="os-btn" type="button" aria-label="Copy the Linux install command" data-copy="curl -fsSL https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.sh | bash">
+            <svg class="os-ico" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1.5c-1.55 0-2.35 1.2-2.35 2.75 0 .6.06 1.02.06 1.45 0 .5-.28.95-.72 1.55-.62.85-1.44 1.75-1.44 3.05 0 .48.28.78.68.9.16.63.6 1.2 1.28 1.56.6.32 1.4.49 2.49.49s1.89-.17 2.49-.49c.68-.36 1.12-.93 1.28-1.56.4-.12.68-.42.68-.9 0-1.3-.82-2.2-1.44-3.05-.44-.6-.72-1.05-.72-1.55 0-.43.06-.85.06-1.45C10.35 2.7 9.55 1.5 8 1.5z"/><ellipse cx="6.7" cy="5" rx=".62" ry=".78" fill="#100f0d"/><ellipse cx="9.3" cy="5" rx=".62" ry=".78" fill="#100f0d"/><path d="M7.1 6.35 8 7.25l.9-.9c-.28-.2-.6-.3-.9-.3s-.62.1-.9.3z" fill="#e2b04a"/></svg>
+            <span class="os-name">Linux</span>
+            <span class="os-sub">curl · bash</span>
+            <span class="os-done"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5L6.5 12L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="os.copied">Copied</span></span>
+          </button>
+          <button class="os-btn" type="button" aria-label="Copy the Windows install command" data-copy="irm https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.ps1 | iex">
+            <svg class="os-ico" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3.6l4.6-.63v4.44H2V3.6zm5.2-.71L13.5 2v5.4H7.2V2.89zM2 8.6h4.6v4.43L2 12.4V8.6zm5.2 0h6.3V14l-6.3-.86V8.6z"/></svg>
+            <span class="os-name">Windows</span>
+            <span class="os-sub">PowerShell</span>
+            <span class="os-done"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5L6.5 12L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="os.copied">Copied</span></span>
+          </button>
+        </div>
+        <p class="os-hint" data-i18n="os.hint">Pick your OS — it copies the one-line install command to your clipboard, ready to paste.</p>
         <div class="terms">
           <div class="term">
             <div class="term-chrome">
@@ -426,6 +462,7 @@
         "s3.t": "Export", "s3.d": "Write Markdown into your Obsidian vault, structure intact.",
         "footer.line": "Open source (MIT) · built by VforVitorio · Kindle and Obsidian are trademarks of their owners; marginalia is not affiliated.",
         "install.title": "Get started", "install.lead": "One command installs everything and launches the app on your machine.",
+        "os.hint": "Pick your OS — it copies the one-line install command to your clipboard, ready to paste.", "os.copied": "Copied",
         "install.req": "The installer sets up uv + Python and downloads the prebuilt app — no Node needed. Local OCR also needs Ollama or LM Studio; cloud OCR works with a Claude or Gemini account.",
         "cta.get2": "Full instructions on GitHub",
         "faq.title": "FAQ",
@@ -454,6 +491,7 @@
         "s3.t": "Exporta", "s3.d": "Escribe Markdown en tu vault de Obsidian, con la estructura intacta.",
         "footer.line": "Open source (MIT) · hecho por VforVitorio · Kindle y Obsidian son marcas de sus dueños; marginalia no está afiliada.",
         "install.title": "Empieza", "install.lead": "Un comando instala todo y arranca la app en tu máquina.",
+        "os.hint": "Elige tu sistema — copia al portapapeles el comando de instalación en una línea, listo para pegar.", "os.copied": "Copiado",
         "install.req": "El instalador configura uv + Python y descarga la app ya compilada — sin Node. El OCR local además requiere Ollama o LM Studio; el OCR en la nube funciona con una cuenta de Claude o Gemini.",
         "cta.get2": "Instrucciones completas en GitHub",
         "faq.title": "Preguntas frecuentes",
@@ -494,8 +532,8 @@
       .then((d) => { if (d && d.tag_name) document.getElementById("ver").textContent = d.tag_name; })
       .catch(() => {});
 
-    // Copy-to-clipboard for the install commands.
-    document.querySelectorAll(".term-copy").forEach((btn) => {
+    // Copy-to-clipboard for the install commands (terminal blocks + OS buttons).
+    document.querySelectorAll(".term-copy, .os-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         navigator.clipboard.writeText(btn.getAttribute("data-copy") || "").then(() => {
           btn.classList.add("copied");
