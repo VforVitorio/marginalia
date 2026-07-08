@@ -19,7 +19,8 @@ import {
   pageImageUrl,
   type PageState,
 } from "../api/client";
-import { useJobStream, type SseEvent } from "../lib/sse";
+import type { SseEvent } from "../lib/sse";
+import { useJobStream } from "../lib/useJobStream";
 import { applyPageEvent } from "../lib/reviewReducer";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { MarkdownEditor } from "../components/MarkdownEditor";

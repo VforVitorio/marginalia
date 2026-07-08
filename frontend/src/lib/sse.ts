@@ -67,11 +67,6 @@ export function connectJobStream(jobId: string, handlers: SseHandlers): () => vo
   };
 }
 
-// Re-export the React hook so existing importers that do:
-//   import { useJobStream } from "../lib/sse"
-// continue to work without any change.
-export { useJobStream } from "./useJobStream";
-
 // ── Raw fetch-stream SSE reader (for POST-based streams) ────────────────────
 
 /**

@@ -46,6 +46,11 @@ export function Import({ onJobCreated }: ImportProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Counts nested dragenter/dragleave pairs so hovering over a child element
+  // (the icon, the copy) doesn't fire a spurious dragleave on the container and
+  // flicker the highlight off (FE-19). Only 0 → dragging on, back to 0 → off.
+  const dragCounterRef = useRef(0);
+
   // ── File helpers ─────────────────────────────────────────────────────────
 
   async function uploadFile(file: File) {
@@ -64,8 +69,19 @@ export function Import({ onJobCreated }: ImportProps) {
     }
   }
 
+  function handleDragEnter() {
+    dragCounterRef.current += 1;
+    setDragging(true);
+  }
+
+  function handleDragLeave() {
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) setDragging(false);
+  }
+
   function handleDrop(ev: React.DragEvent<HTMLDivElement>) {
     ev.preventDefault();
+    dragCounterRef.current = 0;
     setDragging(false);
     const file = ev.dataTransfer.files[0];
     if (file) uploadFile(file);
@@ -172,8 +188,8 @@ export function Import({ onJobCreated }: ImportProps) {
             role="button"
             tabIndex={0}
             aria-label="Drop PDF or click to pick"
-            onDragEnter={() => setDragging(true)}
-            onDragLeave={() => setDragging(false)}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
