@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
+import { prefersReducedMotion } from "../lib/motion";
 
 // ── Step data ────────────────────────────────────────────────────────────────
 
@@ -312,6 +313,12 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
     const card = cardRef.current;
     if (!backdrop || !card) return;
 
+    if (prefersReducedMotion()) {
+      // No entrance animation — just place focus (WCAG 2.3.3).
+      firstFocusRef.current?.focus();
+      return;
+    }
+
     gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power2.out" });
     gsap.fromTo(
       card,
@@ -328,7 +335,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const closeWithAnimation = useCallback(() => {
     const backdrop = backdropRef.current;
     const card = cardRef.current;
-    if (!backdrop || !card) {
+    if (!backdrop || !card || prefersReducedMotion()) {
       onClose();
       return;
     }
@@ -377,7 +384,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
 
   function goToStep(next: number, direction: "forward" | "back") {
     const bodyEl = bodyRef.current;
-    if (!bodyEl) {
+    if (!bodyEl || prefersReducedMotion()) {
       setStepIndex(next);
       return;
     }

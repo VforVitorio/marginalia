@@ -18,6 +18,7 @@ import {
   type ProviderStatus,
   type Settings,
 } from "./api/client";
+import { prefersReducedMotion } from "./lib/motion";
 
 import { StepIndicator } from "./components/StepIndicator";
 import { ProviderPicker } from "./components/ProviderPicker";
@@ -46,11 +47,6 @@ interface ActiveJob {
   pageCount: number;
 }
 
-/** True when the user has asked the OS to minimise motion (WCAG 2.3.3). */
-function prefersReducedMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -74,12 +70,8 @@ export default function App() {
   // ── Bootstrap: load settings + providers ────────────────────────────────
 
   useEffect(() => {
-    // Initialise dark mode from localStorage before first paint.
-    const storedTheme = localStorage.getItem("marginalia.theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
-      document.documentElement.classList.add("dark");
-    }
+    // Theme is applied before first paint by the inline script in index.html
+    // (FE-17) — nothing to do here.
 
     // Non-blocking — render the Import step even if backend is down.
     Promise.allSettled([getProvidersStatus(), getSettings()]).then(([prov, sett]) => {
