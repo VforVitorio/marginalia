@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.2.0](https://github.com/VforVitorio/marginalia/compare/v1.1.4...v1.2.0) (2026-07-08)
+
+
+### Features
+
+* **api:** restore the GET /api/scan endpoint ([bdcfda0](https://github.com/VforVitorio/marginalia/commit/bdcfda0e98d39252830d60daeae22e0863a9a9eb))
+* **api:** restore the GET /api/scan endpoint ([08d3872](https://github.com/VforVitorio/marginalia/commit/08d38723545ab550bda37ada4bd8d7fb3e42c85c)), closes [#135](https://github.com/VforVitorio/marginalia/issues/135)
+* **export:** persist vault path and strategies after export ([c3289ad](https://github.com/VforVitorio/marginalia/commit/c3289ad1f5f15f688875c19a62d84a3dc431df01))
+* **export:** persist vault path and strategies after export ([c406333](https://github.com/VforVitorio/marginalia/commit/c406333e9669ed3e9122fb2a88e3d2a7176f54b1)), closes [#146](https://github.com/VforVitorio/marginalia/issues/146)
+* **landing:** add per-OS install buttons that copy the command ([1220938](https://github.com/VforVitorio/marginalia/commit/122093855fb7597ee2cc651a32ec2d31ea28b557))
+* **landing:** per-OS install buttons that copy the command ([3820b9f](https://github.com/VforVitorio/marginalia/commit/3820b9f5e49c387f2cfb0889f4047749957a2ab6))
+* **providers:** let users pick a cloud model, not just the default ([ef43f47](https://github.com/VforVitorio/marginalia/commit/ef43f4755a79178118013c488879f92519c05d43))
+* **providers:** let users pick a cloud model, not just the default ([4abf139](https://github.com/VforVitorio/marginalia/commit/4abf1392d4a8558b0766b7b47306fba9078b52b4))
+
+
+### Bug Fixes
+
+* **api:** make provider status and OCR failures honest ([a245154](https://github.com/VforVitorio/marginalia/commit/a245154d73c895393221575fc0d63372cd018cdb))
+* **api:** make provider status and OCR failures honest ([0f41bf0](https://github.com/VforVitorio/marginalia/commit/0f41bf0da8de23d5444c81d6f65b3529e8330e53)), closes [#139](https://github.com/VforVitorio/marginalia/issues/139)
+* **api:** make the OCR SSE stream robust to slow and hung engines ([722130a](https://github.com/VforVitorio/marginalia/commit/722130aabaff0f87dccb027ad5d65f10ab88ba7d))
+* **api:** make the OCR SSE stream robust to slow and hung engines ([8a0d9f0](https://github.com/VforVitorio/marginalia/commit/8a0d9f060c6f699cd802a160be5024179c77fa7d))
+* **api:** run PDF rasterization off the event loop ([6408cd1](https://github.com/VforVitorio/marginalia/commit/6408cd148c207d188dcbb6d7388fb11e49cd03a1))
+* **api:** run PDF rasterization off the event loop ([193bb68](https://github.com/VforVitorio/marginalia/commit/193bb689ee3a05fedbd807292c3cc496a93a9d40))
+* **deps:** bump vitest to 3.2.7 to close critical RCE advisory ([4d2cfd8](https://github.com/VforVitorio/marginalia/commit/4d2cfd83ef8bb23690fda7ac7e3cc16708da7a8a))
+* **deps:** bump vitest to 3.2.7 to close critical RCE advisory ([dda98b7](https://github.com/VforVitorio/marginalia/commit/dda98b7151f7db72af846a17df6e0c9002879416))
+* **deps:** pin frontend dev-deps to peer-compatible majors ([b607abc](https://github.com/VforVitorio/marginalia/commit/b607abc60c56d285b034e7b5a919b5ffc465c43a))
+* **deps:** pin frontend dev-deps to peer-compatible majors ([ef317bb](https://github.com/VforVitorio/marginalia/commit/ef317bbc3b1682115cf4ee04171f0b4ced506442))
+* **export:** merge wikilinks index instead of overwriting it ([65ee35d](https://github.com/VforVitorio/marginalia/commit/65ee35df250d59041e9de75929eb3359f1eef77b))
+* **export:** merge wikilinks index instead of overwriting it ([a761bd5](https://github.com/VforVitorio/marginalia/commit/a761bd5592d9d709324a4776b51f6731211c4ae3))
+* **export:** use a realpath containment barrier CodeQL recognizes ([27b2f8e](https://github.com/VforVitorio/marginalia/commit/27b2f8e36405a6c254447f0c6668f49f3f958d4d))
+* **frontend:** add error boundary, fix header merge order, document contract types ([39151c9](https://github.com/VforVitorio/marginalia/commit/39151c9b18af740fcff80a4464087e5e1b8c671a))
+* **frontend:** error boundary, header merge order, contract type docs ([3ac138f](https://github.com/VforVitorio/marginalia/commit/3ac138fa35eadd890bef83109d11429f06441469))
+* **frontend:** refresh, empty and busy states for the provider picker ([ad2e8a5](https://github.com/VforVitorio/marginalia/commit/ad2e8a5e91126954578c50cbe9c5403b4a35db0f))
+* **frontend:** refresh, empty and busy states for the provider picker ([2ac0cf0](https://github.com/VforVitorio/marginalia/commit/2ac0cf018a4d2e6fa7cd1bd78826b9a471791981))
+* **frontend:** stop streaming re-renders from re-parsing done pages ([773b75c](https://github.com/VforVitorio/marginalia/commit/773b75cf9ccbda65e4c5b724125506a74d22d02e))
+* **frontend:** stop streaming re-renders from re-parsing done pages ([7b69f25](https://github.com/VforVitorio/marginalia/commit/7b69f25c4308fa861b395307172a1cee6ffce443))
+* **models-admin:** surface Ollama pull progress and failures ([5f7945d](https://github.com/VforVitorio/marginalia/commit/5f7945d1a3a2ddb2f038a9297419bdd32d4af819))
+* **models-admin:** surface Ollama pull progress and failures ([85d1af5](https://github.com/VforVitorio/marginalia/commit/85d1af5f61fd05a47462e9260816397e1da43122))
+* **persistence:** anchor config paths and make on-disk writes atomic ([50f52c3](https://github.com/VforVitorio/marginalia/commit/50f52c3cfb249edafa3be2a133391906bf62c10f))
+* **persistence:** anchor config paths and make on-disk writes atomic ([90754d3](https://github.com/VforVitorio/marginalia/commit/90754d3a734e5b41ed5b92dd4ecf01ae0a80f325))
+* **review:** stop dropping edits in the auto-save path ([648cad0](https://github.com/VforVitorio/marginalia/commit/648cad04111de2e189d5061fcf1b60dea05dc79e))
+* **review:** stop dropping edits in the auto-save path ([a032c57](https://github.com/VforVitorio/marginalia/commit/a032c5756b5ddab8ef9cb68d04fb9c8fc42e2d42)), closes [#133](https://github.com/VforVitorio/marginalia/issues/133)
+* **stream:** resume instead of re-OCRing, reset on disconnect, guard reruns ([3c67627](https://github.com/VforVitorio/marginalia/commit/3c676278d538e9e9c78ffbab293e65e67ce69579))
+* **stream:** resume instead of re-OCRing, reset on disconnect, guard reruns ([dc09055](https://github.com/VforVitorio/marginalia/commit/dc0905525add95ab0fae9cc36e7ba9a810120bcb)), closes [#134](https://github.com/VforVitorio/marginalia/issues/134)
+
+
+### Documentation
+
+* **backlog:** note domain feature ideas + untapped Scribe PDF signal ([0b0d5ae](https://github.com/VforVitorio/marginalia/commit/0b0d5aefea5fe196742a0380feb42db61f25580a))
+* **backlog:** note domain feature ideas + untapped Scribe PDF signal ([9c8c22e](https://github.com/VforVitorio/marginalia/commit/9c8c22e1c21de15741b0c789d038be1fa5c5b93c))
+* **readme:** finalize the README ([1ffd373](https://github.com/VforVitorio/marginalia/commit/1ffd373817830a2a799893c60a18e4187c0054e6))
+* **readme:** finalize the README ([e0d543b](https://github.com/VforVitorio/marginalia/commit/e0d543b5d31af5d88476b0abed591e69dd5f184a))
+* **research:** add backend + frontend/architecture audit reports ([9d7a6a0](https://github.com/VforVitorio/marginalia/commit/9d7a6a059c271326797d2481616c91cd66882e72))
+* **research:** add backend + frontend/architecture audit reports ([1f8a8a8](https://github.com/VforVitorio/marginalia/commit/1f8a8a828f84736166d29e04a316680faf77a0d5))
+
 ## [1.1.4](https://github.com/VforVitorio/marginalia/compare/v1.1.3...v1.1.4) (2026-07-05)
 
 
