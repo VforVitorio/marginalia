@@ -5,6 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>marginalia</title>
+    <!--
+      FE-17: apply the theme class before first paint so there's no flash of the
+      wrong theme (FOUC). This is the single source of truth for the initial
+      "dark" class — App.tsx and ThemeToggle.tsx no longer recompute it; they
+      just read what's already on <html> once React mounts.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("marginalia.theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (stored === "dark" || (!stored && prefersDark)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {
+          // localStorage/matchMedia unavailable — fall back to light mode.
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

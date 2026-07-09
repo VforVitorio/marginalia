@@ -19,6 +19,14 @@ from marginalia.ocr.prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
+# BE-09: a bare float timeout on httpx.AsyncClient applies to *every* phase, including connect — so
+# an unreachable base_url (LAN box off, VPN down, typo'd host) blocked a page for the full 120s
+# before erroring. Splitting connect out keeps that short while the read budget (between chunks on
+# the transcription stream) stays generous for legitimately slow token generation.
+_CONNECT_TIMEOUT_S = 5.0
+_WRITE_TIMEOUT_S = 30.0
+_POOL_TIMEOUT_S = 10.0
+
 
 class OpenAICompatEngine:
     """OCR backend over the OpenAI-compatible API. Satisfies the ``OCREngine`` Protocol."""
@@ -38,7 +46,14 @@ class OpenAICompatEngine:
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._api_key = api_key
-        self._timeout = timeout
+        # `timeout` is the read budget: applies between chunks on the streamed response, so a slow
+        # model still gets its full transcription time even though connect fails fast.
+        self._timeout = httpx.Timeout(
+            connect=_CONNECT_TIMEOUT_S,
+            read=timeout,
+            write=_WRITE_TIMEOUT_S,
+            pool=_POOL_TIMEOUT_S,
+        )
 
     def models(self) -> list[str]:
         """Models the runtime reports at ``/models``. Empty list if it doesn't respond."""

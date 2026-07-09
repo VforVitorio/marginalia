@@ -10,14 +10,42 @@ use": ``providers.toml`` is seed/credentials, ``settings.json`` is written by th
 
 from __future__ import annotations
 
+import logging
+import os
 import tomllib
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
-DATA_DIR = Path("data")
-SETTINGS_PATH = DATA_DIR / "settings.json"
-PROVIDERS_PATH = Path("providers.toml")
+logger = logging.getLogger(__name__)
+
+
+def _resolve_home_dir(env_value: str | None) -> Path | None:
+    """Pure resolution of the ``MARGINALIA_HOME`` env var.
+
+    ``None`` (unset or empty) means "stay CWD-relative" — the historical, still-default
+    behavior that lets tests isolate ``data/`` and ``providers.toml`` with
+    ``monkeypatch.chdir(tmp_path)`` (see ``backend/tests/test_api.py``). Only a non-empty
+    value anchors the paths to a fixed directory, for running the installed console script
+    from outside the repo checkout (BE-11).
+    """
+    return Path(env_value) if env_value else None
+
+
+def _resolve_paths(home: Path | None) -> tuple[Path, Path, Path]:
+    """Derive ``(data_dir, settings_path, providers_path)`` from an optional anchor dir.
+
+    ``home=None`` keeps every path relative, resolved against the process CWD at each
+    filesystem call — exactly the pre-``MARGINALIA_HOME`` behavior.
+    """
+    data_dir = (home / "data") if home else Path("data")
+    settings_path = data_dir / "settings.json"
+    providers_path = (home / "providers.toml") if home else Path("providers.toml")
+    return data_dir, settings_path, providers_path
+
+
+_MARGINALIA_HOME = _resolve_home_dir(os.environ.get("MARGINALIA_HOME"))
+DATA_DIR, SETTINGS_PATH, PROVIDERS_PATH = _resolve_paths(_MARGINALIA_HOME)
 
 
 class ProviderConfig(BaseModel):
@@ -29,6 +57,21 @@ class ProviderConfig(BaseModel):
     base_url: str | None = None
     api_key: str | None = None
     default_model: str | None = None
+
+
+# ponytail: curated list; fetch from the API if it drifts. Gemini's own ``/models`` endpoint lists
+# dozens of models unrelated to OCR (embeddings, text-only, deprecated previews), so the picker
+# offers this hand-picked, vision-capable subset instead of the raw probe result (issue #148).
+# Claude has no such list — it's a single subscription surface, picked via the Agent SDK, not a
+# model catalogue — so it is deliberately absent here.
+CLOUD_MODELS: dict[str, list[str]] = {
+    "gemini": [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+    ],
+}
 
 
 class Settings(BaseModel):
@@ -65,13 +108,41 @@ def resolve_providers(settings: Settings) -> list[ProviderConfig]:
 
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
-    """Read the user's choices. Defaults if nothing has been saved yet."""
+    """Read the user's choices. Defaults if nothing has been saved yet, or if the file is corrupt.
+
+    BE-12: every route that touches settings calls this, so a malformed ``settings.json`` (a crash
+    mid-write predating ``write_text_atomic``, or manual editing) must not 500 every endpoint in the
+    app. ``model_validate_json`` raises ``ValidationError`` for both invalid JSON syntax and schema
+    mismatches (pydantic v2 wraps the JSON parser's errors the same way), so catching just that one
+    exception type covers both failure shapes. Losing the user's saved choices is an acceptable
+    trade for keeping the app usable — the alternative is bricking it until they hand-delete a file
+    they were promised never to touch.
+    """
     if not path.exists():
         return Settings()
-    return Settings.model_validate_json(path.read_text(encoding="utf-8"))
+    try:
+        return Settings.model_validate_json(path.read_text(encoding="utf-8"))
+    except ValidationError:
+        logger.warning("Corrupt settings.json at %s — falling back to defaults.", path)
+        return Settings()
 
 
 def save_settings(settings: Settings, path: Path = SETTINGS_PATH) -> None:
     """Persist the user's choices (the UI calls this whenever something changes)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(settings.model_dump_json(indent=2), encoding="utf-8")
+    write_text_atomic(path, settings.model_dump_json(indent=2))
+
+
+def write_text_atomic(path: Path, text: str, *, encoding: str = "utf-8") -> None:
+    """Write ``text`` to ``path`` without ever leaving a truncated file behind (BE-12).
+
+    Writes to a sibling temp file first, then ``os.replace`` swaps it into place — atomic on
+    both POSIX and Windows as long as source and destination share a filesystem, which the
+    same-directory temp file guarantees. A crash or power-cut mid-write leaves the temp file
+    corrupt and ``path`` untouched, instead of truncating ``path`` itself into invalid JSON that
+    would otherwise 500 on the next read. Shared by ``save_settings`` above and
+    ``jobs.store.JobStore._write``.
+    """
+    tmp_path = path.with_name(f"{path.name}.tmp")
+    tmp_path.write_text(text, encoding=encoding)
+    os.replace(tmp_path, path)

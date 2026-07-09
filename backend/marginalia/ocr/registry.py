@@ -7,10 +7,14 @@ case here, without touching the orchestrator or the UI.
 
 from __future__ import annotations
 
+import logging
+
 from marginalia.config import ProviderConfig, Settings, load_settings, resolve_providers
 from marginalia.ocr.agent_sdk import AgentSDKEngine
 from marginalia.ocr.engine import EngineKind, OCREngine
 from marginalia.ocr.openai_compat import OpenAICompatEngine
+
+logger = logging.getLogger(__name__)
 
 
 def build_engine(provider: ProviderConfig, model: str | None = None) -> OCREngine:
@@ -51,5 +55,10 @@ def active_engine(
 
 def _pick_provider(active_id: str | None, providers: list[ProviderConfig]) -> ProviderConfig:
     if active_id:
-        return next((p for p in providers if p.id == active_id), providers[0])
+        match = next((p for p in providers if p.id == active_id), None)
+        if match is not None:
+            return match
+        # BE-18: the saved active provider is gone from the catalogue (renamed/removed in providers.toml).
+        # Fall back to the first entry, but say so — a silent switch would OCR with the wrong provider.
+        logger.warning("Active provider %r not in the catalogue; falling back to %r.", active_id, providers[0].id)
     return providers[0]  # ponytail: with no user selection, the first in the catalogue

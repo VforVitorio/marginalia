@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from marginalia.structure.mapper import Strategy
+
 
 class SettingsUpdate(BaseModel):
     """Partial settings update from the UI; unset fields are left unchanged."""
@@ -35,7 +37,8 @@ class ProvidersOut(BaseModel):
 class ProviderStatus(BaseModel):
     """Live status of one provider as seen by the UI.
 
-    ``state`` vocabulary: ``ready`` | ``no_model`` | ``unreachable`` | ``needs_key`` | ``unknown``.
+    ``state`` vocabulary: ``ready`` | ``no_model`` | ``unreachable`` | ``needs_key`` | ``invalid_key`` |
+    ``unknown``. ``invalid_key`` (BE-07): a cloud key is present but the provider rejected it.
     ``hint`` is a human-readable next step shown when the provider is not ready.
     """
 
@@ -123,7 +126,9 @@ class ExportBody(BaseModel):
     """Request body for ``POST /jobs/{id}/export``."""
 
     vault_path: str
-    strategies: list[str]
+    # BE-19: a validating Literal (not free-text str) — Pydantic 422s a typo'd strategy instead of
+    # silently dropping it, so `jobs.py` no longer needs to `cast` the request body to `Strategy`.
+    strategies: list[Strategy]
     target_dir: str = ""  # destination subfolder for loose uploads (ignored for scanned notebooks)
 
 

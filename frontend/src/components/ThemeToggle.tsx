@@ -1,17 +1,18 @@
 /**
  * ThemeToggle — switches between light and dark mode via the `class` strategy.
  * Persists preference to localStorage.
+ *
+ * The initial `dark` class is already applied to <html> by the inline script in
+ * index.html (FE-17, avoids a flash of the wrong theme) — this component reads
+ * that single source of truth instead of recomputing it from localStorage.
  */
 
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState<boolean>(() => {
-    const stored = localStorage.getItem("marginalia.theme");
-    if (stored === "dark") return true;
-    if (stored === "light") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const [dark, setDark] = useState<boolean>(() =>
+    document.documentElement.classList.contains("dark"),
+  );
 
   useEffect(() => {
     const root = document.documentElement;

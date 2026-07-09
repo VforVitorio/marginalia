@@ -27,6 +27,7 @@ from marginalia.config import (
     save_settings,
 )
 from marginalia.models_admin import (
+    cloud_models,
     ensure_loaded,
     ensure_runtime_ready,
     list_models,
@@ -73,12 +74,19 @@ def list_provider_catalogue() -> ProvidersOut:
 
 
 @router.get("/providers/status")
-def providers_status() -> ProvidersStatusOut:
-    """Live per-provider status: runtime reachable? which models loaded? what's the next step?"""
+async def providers_status() -> ProvidersStatusOut:
+    """Live per-provider status: runtime reachable? which models loaded? what's the next step?
+
+    BE-16: probes run concurrently, not sequentially — with several local runtimes down plus an
+    unreachable cloud key, sequential probing sums every provider's timeout; concurrent probing
+    bounds the worst case to the single slowest probe.
+    """
     settings = load_settings()
-    return ProvidersStatusOut(
-        providers=[_provider_status(provider, settings) for provider in resolve_providers(settings)]
+    providers = resolve_providers(settings)
+    statuses = await asyncio.gather(
+        *(asyncio.to_thread(_provider_status, provider, settings) for provider in providers)
     )
+    return ProvidersStatusOut(providers=list(statuses))
 
 
 def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderStatus:
@@ -107,7 +115,16 @@ def _provider_status(provider: ProviderConfig, settings: Settings) -> ProviderSt
         configured = bool(provider.api_key) and _PLACEHOLDER_KEY_PREFIX not in (provider.api_key or "")
         if not configured:
             return status(False, [], "needs_key", "Add your API key.")
-        return status(True, [current] if current else [], "ready", "")
+        # BE-07: a key being *present* isn't the same as being *valid* — probe it with the same
+        # cheap GET /models call the local branch already makes (no tokens spent), so a
+        # revoked/typo'd key is caught here instead of failing later at OCR time.
+        reachable, probed_models = runtime_status(provider)
+        if not reachable:
+            return status(False, [], "invalid_key", f"{provider.display_name} rejected the API key.")
+        # #148: offer the curated model list (falls back to the probe) so the picker shows more
+        # than just the default model — the same "pick from a list" UX local providers already have.
+        models = cloud_models(provider, probed_models)
+        return status(True, models or ([current] if current else []), "ready", "")
     reachable, models = runtime_status(provider)
     if not reachable:
         return status(False, [], "unreachable", f"Start {provider.display_name} — its server isn't reachable.")
