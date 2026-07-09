@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use marginalia, please cite it using the metadata below."
+title: marginalia
+abstract: >-
+  Turn handwritten Kindle Scribe notebooks into Obsidian Markdown via local or
+  cloud OCR, with a side-by-side human review step and folder-mirroring export.
+type: software
+authors:
+  - given-names: Víctor
+    family-names: Vega Sobral
+    alias: VforVitorio
+repository-code: "https://github.com/VforVitorio/marginalia"
+url: "https://github.com/VforVitorio/marginalia"
+license: MIT
+version: "1.2.0"
+date-released: "2026-07-08"
+keywords:
+  - kindle-scribe
+  - obsidian
+  - ocr
+  - handwriting
+  - markdown
+  - note-taking
