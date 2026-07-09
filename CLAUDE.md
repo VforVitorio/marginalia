@@ -119,7 +119,6 @@ Apply [[clean-code]]. Repo-specific:
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture decisions, data flow, full tree.
 - [README.md](README.md) — user-facing pitch.
-- [KICKOFF.md](KICKOFF.md) — original brief (historical reference).
 - [BACKLOG.md](BACKLOG.md) — out-of-MVP ideas, parked.
 - `providers.example.toml` — provider configuration template.
 - `scripts/setup-github.sh` — applies branch protection + labels.
