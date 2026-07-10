@@ -5,6 +5,8 @@
 ## Links
 - GitHub repository: https://github.com/VforVitorio/marginalia
 - Landing page: https://vforvitorio.github.io/marginalia/
+- Install (macOS/Linux): curl -fsSL https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.sh | bash
+- Install (Windows, PowerShell): irm https://raw.githubusercontent.com/VforVitorio/marginalia/main/scripts/install.ps1 | iex
 
 ## What it does
 - OCR handwriting locally (Qwen3-VL via Ollama / LM Studio) or in the cloud (Claude / Gemini).
@@ -12,5 +14,14 @@
 - Export Markdown into an Obsidian vault, mirroring the Kindle Scribe folder structure (optional wikilinks).
 - Renders handwritten math as KaTeX; supports GitHub-flavoured tables and callouts.
 
+## FAQ
+- Is it free? Yes — open source under the MIT license, no cost.
+- Does my data stay private? With local OCR nothing leaves your machine; cloud OCR (Claude or Gemini) is optional, for the hardest pages.
+- Which devices does it support? The Kindle Scribe only, for now — not reMarkable, iPad, or Samsung Notes.
+- What if the OCR is wrong? Every page has a side-by-side review to fix mistakes before anything is written to the vault.
+- Do I need an API key? Not for local OCR (Ollama). For cloud, use a Claude subscription (no key) or a free Gemini key.
+- Which operating systems? Windows, macOS, and Linux.
+
 ## Notes
 - Kindle Scribe only (for now). Single-user, local desktop-style app.
+- Latest release: v1.2.0. License: MIT.
