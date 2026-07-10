@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.1](https://github.com/VforVitorio/marginalia/compare/v1.2.0...v1.2.1) (2026-07-10)
+
+
+### Documentation
+
+* add CITATION.cff, remove KICKOFF, refresh BACKLOG ([2e8c81a](https://github.com/VforVitorio/marginalia/commit/2e8c81a8160743ff59978026ce0570a6aa7c931b))
+* add CITATION.cff, remove the historical KICKOFF brief, refresh BACKLOG ([019133c](https://github.com/VforVitorio/marginalia/commit/019133cb520613b7b395daefb44c8bdf0dd91f39))
+* **seo:** enrich llms.txt with install commands + FAQ ([3b40a81](https://github.com/VforVitorio/marginalia/commit/3b40a813a98e4aab861df8048ea47e19eb00ef4c))
+* **seo:** enrich llms.txt with install commands + FAQ ([7cfa734](https://github.com/VforVitorio/marginalia/commit/7cfa734c7591869e316a4262d420e933375bbf3f))
+
 ## [1.2.0](https://github.com/VforVitorio/marginalia/compare/v1.1.4...v1.2.0) (2026-07-08)
 
 
