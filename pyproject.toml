@@ -12,7 +12,7 @@ dependencies = [
     "pymupdf>=1.28.0",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
-    "claude-agent-sdk>=0.2.110",
+    "claude-agent-sdk>=0.2.116",
 ]
 
 [project.scripts]
