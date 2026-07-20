@@ -22,7 +22,7 @@ marginalia = "marginalia.api.run:main"
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
-    "mypy>=2.1.0",
+    "mypy>=2.3.0",
 ]
 
 [build-system]
